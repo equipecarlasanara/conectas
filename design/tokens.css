@@ -1,0 +1,35 @@
+/* Design Conectas — tokens (fonte: prints do sistema visual) */
+@import url("https://fonts.googleapis.com/css2?family=Funnel+Display:wght@600;700&family=DM+Sans:wght@400;500;600&display=swap");
+:root{
+  --bg:#F8F8F4; --card:#FFFFFF; --ink:#3A0539; --mut:#6B446A; --line:#E7D9E0; --soft:#F2F0E9;
+  --s0:#868880; --s1:#5E6FB4; --s2:#9C829C; --s3:#C4E800; --late:#FF5900;
+  --nav:#3A0539; --navi:#FFFFFF; --backdrop:rgba(0,0,0,.45);
+  --brand:#FF007F; --brand-ink:#FFFFFF;
+  --pink:#FF007F; --orange:#FF5900; --lime:#E4F700; --white:#FFFFFF;
+  --plum:#3A0539; --plum-hover:#4D0A4C; --plum-muted:#6B446A;
+  --font-display:"Funnel Display","DM Sans",system-ui,sans-serif;
+  --font-sans:"DM Sans",system-ui,sans-serif; --font-mono:monospace;
+  --wrap-max:1180px;
+  --radius-md:8px; --radius-lg:10px; --radius-xl:12px; --radius-2xl:14px;
+  --sh:0 1px 2px rgba(58,5,57,.06),0 6px 18px rgba(58,5,57,.07);
+  --sh-primary:0 4px 12px rgba(255,0,127,.25);
+}
+:root[data-theme="dark"]{
+  --bg:#2A0429; --card:#3A0539; --ink:#F8F8F4; --mut:#CDB2CC; --line:#5A2A59; --soft:#4A1649;
+  --s0:#C2C4BF; --s1:#8DA8FC; --s2:#D9C3D9; --s3:#E4F700; --late:#FF8240;
+  --nav:#FF409F; --navi:#3A0539; --brand:#FF409F; --brand-ink:#3A0539;
+  --sh:0 6px 18px rgba(0,0,0,.35);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#2A0429; --card:#3A0539; --ink:#F8F8F4; --mut:#CDB2CC; --line:#5A2A59; --soft:#4A1649;
+    --s0:#C2C4BF; --s1:#8DA8FC; --s2:#D9C3D9; --s3:#E4F700; --late:#FF8240;
+    --nav:#FF409F; --navi:#3A0539; --brand:#FF409F; --brand-ink:#3A0539; --sh:0 6px 18px rgba(0,0,0,.35);
+  }
+}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.45 var(--font-sans)}
+h1,h2{font-family:var(--font-display);font-weight:700;margin:0}
+h1{font-size:28px;letter-spacing:-.01em} h3{font:600 15px var(--font-sans);margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+@media(max-width:640px){h1{font-size:24px}}
