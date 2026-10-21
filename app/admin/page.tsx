@@ -31,6 +31,26 @@ function Admin() {
   async function cadastrar(e: React.FormEvent) {
     e.preventDefault(); setErro(""); setOk("");
     const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token?.startsWith("local-token-")) {
+      const { error } = await supabase.from("perfis").insert({
+        nome: nu.nome.trim(),
+        email: nu.email.trim().toLowerCase(),
+        papel: nu.papel,
+        fin: nu.fin,
+        ativo: true,
+        acesso_projetos: "todos",
+        ver_geral: true,
+        ver_impactometro: true,
+        ver_pax_consultor: nu.papel === "admin",
+        ver_capacidade: nu.papel === "admin" || nu.papel === "gestora",
+        carga_horas_mes: 176,
+      });
+      if (error) { setErro("Não foi possível cadastrar. Tente de novo."); return; }
+      setOk(`Usuário cadastrado. Passe o e-mail e a senha provisória para ${nu.nome}.`);
+      setNu({ nome: "", email: "", senha: "", papel: "gestora", fin: "nenhum" });
+      carregar();
+      return;
+    }
     const r = await fetch("/api/admin/usuarios", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` }, body: JSON.stringify(nu) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) { setErro(j.erro || "Não foi possível cadastrar. Tente de novo."); return; }
