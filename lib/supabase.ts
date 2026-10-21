@@ -127,7 +127,7 @@ function seedDB() {
       apoio_id: "u-marcelle",
       inicio_previsto: "2026-09-01",
       fim_previsto: "2026-12-30",
-      situacao: "execucao",
+      situacao: "em_execucao",
       fase: "execucao",
       tipo_projeto: "Programa",
       subtipo: "PDL",
@@ -151,7 +151,7 @@ function seedDB() {
       apoio_id: "u-angelica",
       inicio_previsto: "2026-08-15",
       fim_previsto: "2026-11-20",
-      situacao: "execucao",
+      situacao: "em_execucao",
       fase: "execucao",
       tipo_projeto: "Consultoria",
       subtipo: "Coaching",
@@ -533,7 +533,15 @@ function getDB(): Record<string, any[]> {
   if (typeof window === "undefined") return seedDB();
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed.projetos)) {
+        parsed.projetos.forEach((p: any) => {
+          if (p.situacao === "execucao") p.situacao = "em_execucao";
+        });
+      }
+      return parsed;
+    }
   } catch {}
   const initial = seedDB();
   try {

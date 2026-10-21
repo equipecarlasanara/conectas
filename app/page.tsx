@@ -65,10 +65,6 @@ function Visao() {
       <section className="bx"><h2>Projetos por tipo</h2>{d.p.length === 0 ? <p className="empty">Sem projetos.</p> : Object.entries(porTipo).map(([k, v]) => <div className="hb" key={k}><span>{k}</span><span className="t"><i style={{ width: (v as number) / d.p.length * 100 + "%", background: "var(--s2)" }} /></span><b>{v as number}</b></div>)}</section>
       <section className="bx"><h2>Projetos por GP</h2>{Object.keys(porCons).length === 0 ? <p className="empty">Sem projetos.</p> : <div className="tw"><table><thead><tr><th>GP</th><th>Total</th><th>Em andamento</th><th>Finalizado ou pausado</th></tr></thead><tbody>{Object.entries(porCons).map(([k, v]: any) => <tr key={k}><td>{k}</td><td>{v.t}</td><td>{v.and}</td><td>{v.fin}</td></tr>)}</tbody></table></div>}</section>
       <section className="bx"><h2>Projetos por líder técnico</h2>{Object.keys(porLT).length === 0 ? <p className="empty">Nenhum projeto com líder técnico definido.</p> : <div className="tw"><table><thead><tr><th>Líder técnico</th><th>Total</th><th>Em andamento</th><th>Finalizado ou pausado</th></tr></thead><tbody>{Object.entries(porLT).map(([k, v]: any) => <tr key={k}><td>{k}</td><td>{v.t}</td><td>{v.and}</td><td>{v.fin}</td></tr>)}</tbody></table></div>}</section>
-      <section className="bx"><h2>Projetos ativos por GP</h2>
-        {ativos.length === 0 ? <p className="empty">Sem projetos ativos.</p> :
-          Object.entries(porResp).map(([k, v]) => <div className="hb" key={k}><span>{k}</span><span className="t"><i style={{ width: (v as number) / maxR * 100 + "%", background: "var(--brand)" }} /></span><b>{v as number}</b></div>)}
-      </section>
       {finOk && <section className="bx"><h2>Receita por mês</h2>
         {meses.length === 0 ? <p className="empty">Nenhum valor lançado. Vincule valores aos entregáveis dos projetos.</p> :
           meses.map(m => <div key={m}><div className="hb"><span>{mesBR(m)} previsto</span><span className="t"><i style={{ width: (prevMes[m] || 0) / maxM * 100 + "%", background: "var(--s1)" }} /></span><b>{brk(prevMes[m] || 0)}</b></div>
