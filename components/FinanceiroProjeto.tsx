@@ -11,10 +11,13 @@ const txt = (v: any) => (v == null ? "" : String(v).replace(".", ","));
 // Gestão financeira do projeto: despesas (logística, material, parceiros...) com ou sem valor orçado.
 export default function FinanceiroProjeto({ projetoId, pode, perfil }: { projetoId: string; pode: boolean; perfil: any }) {
   const [l, setL] = useState<any[]>([]); const [contratado, setContratado] = useState<number | null>(null); const [reconhecida, setReconhecida] = useState(0); const [saving, setSaving] = useState(0);
+  const [categorias, setCategorias] = useState<string[]>(CATEGORIAS);
   const [dlg, setDlg] = useState<any>(null); const [erro, setErro] = useState(""); const [ok, setOk] = useState("");
   const finVer = perfil.fin !== "nenhum"; const podeEditar = pode || perfil.fin === "editar" || perfil.fin === "validar";
   const carregar = useCallback(async () => {
     setL((await supabase.from("despesas").select("*, quem:perfis(nome)").eq("projeto_id", projetoId).order("data", { ascending: false })).data || []);
+    const ops = (await supabase.from("opcoes_sistema").select("nome").eq("grupo", "categoria_despesa").eq("ativo", true).order("ordem")).data || [];
+    if (ops.length) setCategorias(ops.map((x: any) => x.nome));
     if (finVer) {
       const f = await supabase.from("projeto_financeiro").select("valor_contratado").eq("projeto_id", projetoId).maybeSingle();
       setContratado(f.data ? Number(f.data.valor_contratado) : null);
@@ -70,12 +73,12 @@ export default function FinanceiroProjeto({ projetoId, pode, perfil }: { projeto
     </section>
     {Object.keys(porCat).length > 0 && <section className="bx"><h2>Gasto por categoria</h2>
       {Object.entries(porCat).sort((a, b) => b[1] - a[1]).map(([k, v]) => <div className="hb" key={k}><span>{k}</span><span className="t"><i style={{ width: (gasto ? Math.max(v, 0) / gasto * 100 : 0) + "%", background: "var(--s2)" }} /></span><b>{brl(v)}</b></div>)}</section>}
-    {dlg && <FormDespesa projetoId={projetoId} d={dlg} onClose={() => { setDlg(null); carregar(); }} />}
+    {dlg && <FormDespesa projetoId={projetoId} d={dlg} categorias={categorias} onClose={() => { setDlg(null); carregar(); }} />}
   </>);
 }
 
-function FormDespesa({ projetoId, d, onClose }: { projetoId: string; d: any; onClose: () => void }) {
-  const [s, setS] = useState<any>({ categoria: d.categoria || "Logística", descricao: d.descricao || "", fornecedor: d.fornecedor || "", data: d.data || hoje(), orcado: txt(d.valor_orcado), gasto: txt(d.valor_gasto), reemb: Number(d.valor_reembolsado) > 0 ? txt(d.valor_reembolsado) : "" });
+function FormDespesa({ projetoId, d, categorias, onClose }: { projetoId: string; d: any; categorias: string[]; onClose: () => void }) {
+  const [s, setS] = useState<any>({ categoria: d.categoria || categorias[0] || "Logística", descricao: d.descricao || "", fornecedor: d.fornecedor || "", data: d.data || hoje(), orcado: txt(d.valor_orcado), gasto: txt(d.valor_gasto), reemb: Number(d.valor_reembolsado) > 0 ? txt(d.valor_reembolsado) : "" });
   const [erro, setErro] = useState("");
   async function salvar(e: React.FormEvent) {
     e.preventDefault(); setErro("");
@@ -85,7 +88,7 @@ function FormDespesa({ projetoId, d, onClose }: { projetoId: string; d: any; onC
     onClose();
   }
   return <Dialog titulo={d.id ? "Editar despesa" : "Lançar despesa"} onClose={onClose}><form onSubmit={salvar}><div className="fg">
-    <label className="f">Categoria<input required list="cats" value={s.categoria} onChange={e => setS({ ...s, categoria: e.target.value })} /><datalist id="cats">{CATEGORIAS.map(c => <option key={c} value={c} />)}</datalist></label>
+    <label className="f">Categoria<select required value={s.categoria} onChange={e => setS({ ...s, categoria: e.target.value })}>{categorias.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
     <label className="f">Data<input type="date" required value={s.data} onChange={e => setS({ ...s, data: e.target.value })} /></label>
     <label className="f w">Descrição<input required value={s.descricao} onChange={e => setS({ ...s, descricao: e.target.value })} placeholder="Ex.: Passagem aérea SP-Recife" /></label>
     <label className="f w">Fornecedor ou parceiro<input value={s.fornecedor} onChange={e => setS({ ...s, fornecedor: e.target.value })} placeholder="Opcional" /></label>

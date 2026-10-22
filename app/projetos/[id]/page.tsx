@@ -18,6 +18,7 @@ function Detalhe() {
   const [p, setP] = useState<any>(null); const [macros, setMacros] = useState<any[]>([]); const [ents, setEnts] = useState<any[]>([]);
   const [ativs, setAtivs] = useState<any[]>([]); const [valor, setValor] = useState<number | null>(null);
   const [pessoas, setPessoas] = useState<any[]>([]); const [tipos, setTipos] = useState<any[]>([]); const [contatos, setContatos] = useState<any[]>([]);
+  const [tiposProj, setTiposProj] = useState<string[]>([]); const [subtipos, setSubtipos] = useState<string[]>([]);
   const [pode, setPode] = useState(false); const [erro, setErro] = useState(""); const [dlg, setDlg] = useState<any>(null);
   const [histA, setHistA] = useState<any[]>([]); const [histE, setHistE] = useState<any[]>([]);
   const [aba, setAba] = useState("escopo"); const [npsL, setNpsL] = useState<any[]>([]); const [reacao, setReacao] = useState<any[]>([]); const [liquido, setLiquido] = useState<number | null>(null);
@@ -40,6 +41,9 @@ function Detalhe() {
     ]);
     setMacros(m.data || []); setEnts(e.data || []); setAtivs(a.data || []); setValor(f.data ? Number(f.data.valor_contratado) : null); setLiquido(f.data && f.data.valor_liquido != null ? Number(f.data.valor_liquido) : null);
     setPessoas(pe.data || []); setTipos(ti.data || []); setPode(pd.data === true); setContatos(ct.data || []);
+    const ops = (await supabase.from("opcoes_sistema").select("grupo,nome").eq("ativo", true).order("ordem")).data || [];
+    setTiposProj(ops.filter((x: any) => x.grupo === "tipo_projeto").map((x: any) => x.nome));
+    setSubtipos(ops.filter((x: any) => x.grupo === "subtipo_projeto").map((x: any) => x.nome));
     setReacao((await supabase.from("avaliacoes_reacao").select("*, consultor:perfis(nome)").eq("projeto_id", id).order("data", { ascending: false })).data || []);
     setNpsL((await supabase.from("nps_respostas").select("*").eq("projeto_id", id).order("data", { ascending: false })).data || []);
     if (pd.data === true) {
@@ -166,6 +170,8 @@ function Detalhe() {
       <p><b>Período:</b> {dataBR(p.inicio_previsto)} a {dataBR(p.fim_previsto)}</p>
       <p><b>Responsabilidades da Conectas:</b> {p.resp_conectas || "-"}</p><p><b>Responsabilidades do cliente:</b> {p.resp_cliente || "-"}</p>
       <div className="fbar">
+        <label className="f">Tipo de projeto<select disabled={!pode} value={p.tipo_projeto || ""} onChange={e => upd("projetos", id, { tipo_projeto: e.target.value || null })}><option value="">Não definido</option>{tiposProj.map(t => <option key={t} value={t}>{t}</option>)}</select></label>
+        <label className="f">Subtipo<select disabled={!pode} value={p.subtipo || ""} onChange={e => upd("projetos", id, { subtipo: e.target.value || null })}><option value="">Não definido</option>{subtipos.map(s => <option key={s} value={s}>{s}</option>)}</select></label>
         <label className="f">Líder técnico<select disabled={!pode} value={p.apoio_id || ""} onChange={e => upd("projetos", id, { apoio_id: e.target.value || null })}><option value="">Sem líder técnico</option>{pessoas.map(x => <option key={x.id} value={x.id}>{x.nome}</option>)}</select></label>
         <label className="f">Logística<select disabled={!pode} value={p.logistica_por || ""} onChange={e => upd("projetos", id, { logistica_por: e.target.value || null })}><option value="">Não definida</option>{Object.entries(LOGISTICA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
         <label className="f w">Observações de logística<input disabled={!pode} key={"lo" + (p.logistica_obs || "")} defaultValue={p.logistica_obs || ""} placeholder="Quem compra passagem, hospedagem, material..." onBlur={e => { if (e.target.value !== (p.logistica_obs || "")) upd("projetos", id, { logistica_obs: e.target.value || null }); }} /></label>

@@ -109,6 +109,33 @@ function seedDB() {
     "Outro",
   ].map((nome, i) => ({ id: `tipo-${i + 1}`, nome, ativo: true }));
 
+  const opcoes_sistema = [
+    ...["PDL", "Coaching", "Assessment", "Treinamento Indoor", "Treinamento Outdoor", "PDE", "Team Building", "Diagnóstico", "Cargos e Salários", "Onboarding"].map(
+      (nome, i) => ({ id: `opt-sub-${i + 1}`, grupo: "subtipo_projeto", nome, ordem: i + 1, ativo: true })
+    ),
+    ...["Palestra", "Workshop", "Programa", "Projeto", "Consultoria"].map((nome, i) => ({
+      id: `opt-tp-${i + 1}`,
+      grupo: "tipo_projeto",
+      nome,
+      ordem: i + 1,
+      ativo: true,
+    })),
+    ...["Logística", "Passagem", "Hospedagem", "Transporte", "Alimentação", "Material", "Impressão", "Parceiro", "Design", "Outros"].map((nome, i) => ({
+      id: `opt-cat-${i + 1}`,
+      grupo: "categoria_despesa",
+      nome,
+      ordem: i + 1,
+      ativo: true,
+    })),
+    ...["Contextualização", "Conteúdo", "Conexão", "Consolidação", "Concretização"].map((nome, i) => ({
+      id: `opt-mac-${i + 1}`,
+      grupo: "macroetapa_padrao",
+      nome,
+      ordem: i + 1,
+      ativo: true,
+    })),
+  ];
+
   const clientes = [
     { id: "cli-1", nome: "Empresa Exemplo A", documento: "12.345.678/0001-90", observacoes: "Conta estratégica — DHO e Liderança" },
     { id: "cli-2", nome: "Empresa Exemplo B", documento: "98.765.432/0001-10", observacoes: "Trilha executiva anual" },
@@ -506,6 +533,7 @@ function seedDB() {
   return {
     perfis,
     tipos_entregavel,
+    opcoes_sistema,
     clientes,
     projetos,
     escopos,
@@ -539,6 +567,10 @@ function getDB(): Record<string, any[]> {
         parsed.projetos.forEach((p: any) => {
           if (p.situacao === "execucao") p.situacao = "em_execucao";
         });
+      }
+      if (!Array.isArray(parsed.opcoes_sistema) || parsed.opcoes_sistema.length === 0) {
+        parsed.opcoes_sistema = seedDB().opcoes_sistema;
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
       }
       return parsed;
     }
@@ -712,6 +744,14 @@ class LocalQueryBuilder {
     const list = db[this.table];
     const match = (r: any) => this.filters.every((fn) => fn(r));
 
+    if (this.op !== "select" && (this.table === "opcoes_sistema" || this.table === "tipos_entregavel")) {
+      const sess = getLocalSession();
+      const me = db.perfis.find((p) => p.id === sess?.user?.id);
+      if (!me || me.papel !== "admin") {
+        return { data: null, error: { message: "Apenas a administração pode alterar parâmetros fixos do sistema." } };
+      }
+    }
+
     let resultRows: any[] = [];
 
     if (this.op === "select") {
@@ -839,7 +879,12 @@ async function handleLocalRpc(fn: string, args: any = {}) {
     };
     db.projetos.unshift(novoProj);
     db.escopos.push({ id: eid, projeto_id: pid, versao: 1, tipo: "contratado", motivo: "Escopo original da venda" });
-    ["Contextualização", "Conteúdo", "Conexão", "Consolidação", "Concretização"].forEach((nome, idx) => {
+    const macrosPadrao = (db.opcoes_sistema || [])
+      .filter((o: any) => o.grupo === "macroetapa_padrao" && o.ativo !== false)
+      .sort((a: any, b: any) => (a.ordem || 0) - (b.ordem || 0))
+      .map((o: any) => o.nome);
+    const listaMacros = macrosPadrao.length > 0 ? macrosPadrao : ["Contextualização", "Conteúdo", "Conexão", "Consolidação", "Concretização"];
+    listaMacros.forEach((nome: string, idx: number) => {
       db.macroetapas.push({ id: uuid(), escopo_id: eid, projeto_id: pid, nome, ordem: idx + 1 });
     });
     saveDB(db);

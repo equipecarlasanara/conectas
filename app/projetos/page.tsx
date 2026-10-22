@@ -17,6 +17,7 @@ function Projetos() {
   const pode = perfil!.papel === "admin" || perfil!.papel === "gestora";
   const finEd = perfil!.fin === "editar" || perfil!.fin === "validar";
   const [lista, setLista] = useState<any[]>([]); const [clientes, setClientes] = useState<any[]>([]); const [pessoas, setPessoas] = useState<any[]>([]);
+  const [subtipos, setSubtipos] = useState<string[]>(SUBTIPOS); const [tiposProj, setTiposProj] = useState<string[]>(TIPOS_PROJETO);
   const [novo, setNovo] = useState(false); const [erro, setErro] = useState(""); const [ocupado, setOcupado] = useState(false);
   const [f, setF] = useState({ cliente: "", resp: "", sit: "", tipo: "", q: "" });
   const vazio = { codigo: "", cliente: "", nome: "", descricao: "", resp: perfil!.id, apoio: "", ini: "", fim: "", tipo: "", subtipo: "", modalidade: "projeto", fase: "", prio: "media" };
@@ -31,8 +32,15 @@ function Projetos() {
     setLista(data || []);
   };
   useEffect(() => { carregar();
-    supabase.from("clientes").select("id,nome").order("nome").then(r => setClientes(r.data || []));
-    supabase.from("perfis").select("id,nome,papel").eq("ativo", true).order("nome").then(r => setPessoas(r.data || []));
+    supabase.from("clientes").select("id,nome").order("nome").then((r: any) => setClientes(r.data || []));
+    supabase.from("perfis").select("id,nome,papel").eq("ativo", true).order("nome").then((r: any) => setPessoas(r.data || []));
+    supabase.from("opcoes_sistema").select("grupo,nome").eq("ativo", true).order("ordem").then((r: any) => {
+      const d = r.data || [];
+      const subs = d.filter((x: any) => x.grupo === "subtipo_projeto").map((x: any) => x.nome);
+      const tps = d.filter((x: any) => x.grupo === "tipo_projeto").map((x: any) => x.nome);
+      if (subs.length) setSubtipos(subs);
+      if (tps.length) setTiposProj(tps);
+    });
   }, []);
 
   function abrirNovo() { setN(vazio); setPrev(null); setArv([]); setAbas(null); setErro(""); setErroLeitura(""); setNovoCliente(""); setNovo(true); }
@@ -92,7 +100,7 @@ function Projetos() {
       <label className="f">Buscar<input value={f.q} onChange={e => setF({ ...f, q: e.target.value })} placeholder="Nome, código ou cliente" /></label>
       <label className="f">Cliente<select value={f.cliente} onChange={e => setF({ ...f, cliente: e.target.value })}><option value="">Todos</option>{clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></label>
       <label className="f">GP<select value={f.resp} onChange={e => setF({ ...f, resp: e.target.value })}><option value="">Todos</option>{pessoas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></label>
-      <label className="f">Tipo<select value={f.tipo} onChange={e => setF({ ...f, tipo: e.target.value })}><option value="">Todos</option>{TIPOS_PROJETO.map(t => <option key={t}>{t}</option>)}</select></label>
+      <label className="f">Tipo<select value={f.tipo} onChange={e => setF({ ...f, tipo: e.target.value })}><option value="">Todos</option>{tiposProj.map(t => <option key={t}>{t}</option>)}</select></label>
       <label className="f">Status<select value={f.sit} onChange={e => setF({ ...f, sit: e.target.value })}><option value="">Todas</option>{Object.entries(SITUACAO).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
       <button className="btn" onClick={() => setF({ cliente: "", resp: "", sit: "", tipo: "", q: "" })}>Limpar filtros</button>
     </section>
@@ -127,8 +135,8 @@ function Projetos() {
           <label className="f">Código<input value={n.codigo} onChange={e => setN({ ...n, codigo: e.target.value })} placeholder="Gerado automaticamente" /></label>
           <label className="f">Cliente<select required value={n.cliente} onChange={e => setN({ ...n, cliente: e.target.value })}><option value="">Selecione</option>{novoCliente && <option value="__novo">Criar cliente: {novoCliente}</option>}{clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></label>
           <label className="f w">Nome do projeto<input required value={n.nome} onChange={e => setN({ ...n, nome: e.target.value })} /></label>
-          <label className="f">Tipo<select value={n.tipo} onChange={e => setN({ ...n, tipo: e.target.value })}><option value="">Não definido</option>{TIPOS_PROJETO.map(t => <option key={t}>{t}</option>)}</select></label>
-          <label className="f">Subtipo<input list="subtipos" value={n.subtipo} onChange={e => setN({ ...n, subtipo: e.target.value })} placeholder="Ex.: Vendas consultivas" /><datalist id="subtipos">{SUBTIPOS.map(s => <option key={s} value={s} />)}</datalist></label>
+          <label className="f">Tipo<select value={n.tipo} onChange={e => setN({ ...n, tipo: e.target.value })}><option value="">Não definido</option>{tiposProj.map(t => <option key={t}>{t}</option>)}</select></label>
+          <label className="f">Subtipo<select value={n.subtipo} onChange={e => setN({ ...n, subtipo: e.target.value })}><option value="">Não definido</option>{subtipos.map(s => <option key={s} value={s}>{s}</option>)}</select></label>
           <label className="f">Modalidade<select value={n.modalidade} onChange={e => setN({ ...n, modalidade: e.target.value })}><option value="projeto">Projeto</option><option value="full_service">Full service</option></select></label>
           <label className="f">Fase<select value={n.fase} onChange={e => setN({ ...n, fase: e.target.value })}><option value="">Não definida</option>{Object.entries(FASE).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
           <label className="f w">Descrição e objetivo<textarea rows={2} value={n.descricao} onChange={e => setN({ ...n, descricao: e.target.value })} /></label>
