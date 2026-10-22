@@ -1,14 +1,16 @@
--- Conectas | migração 0010: listas configuráveis do sistema (subtipos, tipos de projeto, categorias de despesa, macroetapas padrão) editáveis apenas por admin
+-- Conectas | migração 0010: listas configuráveis do sistema (macroetapas padrão, categorias de despesa, classificação do projeto e entregáveis) editáveis apenas por admin
 
 create table if not exists opcoes_sistema (
   id uuid primary key default gen_random_uuid(),
-  grupo text not null, -- 'subtipo_projeto' | 'tipo_projeto' | 'categoria_despesa' | 'macroetapa_padrao'
+  grupo text not null, -- 'macroetapa_padrao' | 'categoria_despesa' | 'tipo_projeto' (Classificação do projeto)
   nome text not null,
   ordem integer not null default 1,
   ativo boolean not null default true,
   criado_em timestamptz not null default now(),
   unique (grupo, nome)
 );
+
+alter table atividades add column if not exists tipo_id uuid references tipos_entregavel(id);
 
 alter table opcoes_sistema enable row level security;
 
@@ -26,21 +28,40 @@ create policy "apenas admin edita tipos_entregavel" on tipos_entregavel
   for all using (exists (select 1 from perfis where id = auth.uid() and ativo and papel = 'admin'))
   with check (exists (select 1 from perfis where id = auth.uid() and ativo and papel = 'admin'));
 
+delete from opcoes_sistema where grupo = 'subtipo_projeto';
+
+insert into tipos_entregavel (nome) values
+  ('Team Building'),
+  ('PDL'),
+  ('Coaching'),
+  ('Assessment'),
+  ('Assessment (MBTI)'),
+  ('Treinamento Indoor'),
+  ('Treinamento Outdoor'),
+  ('PDE'),
+  ('Diagnóstico'),
+  ('Cargos e Salários'),
+  ('Onboarding'),
+  ('Entrevista'),
+  ('Focus group'),
+  ('Visita de campo'),
+  ('Workshop'),
+  ('Programa de desenvolvimento de liderança'),
+  ('Mentoria'),
+  ('Material instrucional'),
+  ('Podcast'),
+  ('Vídeo'),
+  ('Reunião de alinhamento'),
+  ('Kickoff'),
+  ('Gestão de projeto'),
+  ('Outro')
+on conflict (nome) do nothing;
+
 insert into opcoes_sistema (grupo, nome, ordem) values
-  ('subtipo_projeto', 'PDL', 1),
-  ('subtipo_projeto', 'Coaching', 2),
-  ('subtipo_projeto', 'Assessment', 3),
-  ('subtipo_projeto', 'Treinamento Indoor', 4),
-  ('subtipo_projeto', 'Treinamento Outdoor', 5),
-  ('subtipo_projeto', 'PDE', 6),
-  ('subtipo_projeto', 'Team Building', 7),
-  ('subtipo_projeto', 'Diagnóstico', 8),
-  ('subtipo_projeto', 'Cargos e Salários', 9),
-  ('subtipo_projeto', 'Onboarding', 10),
   ('tipo_projeto', 'Palestra', 1),
-  ('tipo_projeto', 'Workshop', 2),
+  ('tipo_projeto', 'Projeto', 2),
   ('tipo_projeto', 'Programa', 3),
-  ('tipo_projeto', 'Projeto', 4),
+  ('tipo_projeto', 'Workshop', 4),
   ('tipo_projeto', 'Consultoria', 5),
   ('categoria_despesa', 'Logística', 1),
   ('categoria_despesa', 'Passagem', 2),

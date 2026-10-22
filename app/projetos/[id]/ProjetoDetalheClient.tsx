@@ -21,7 +21,7 @@ function Detalhe() {
   const [p, setP] = useState<any>(null); const [macros, setMacros] = useState<any[]>([]); const [ents, setEnts] = useState<any[]>([]);
   const [ativs, setAtivs] = useState<any[]>([]); const [valor, setValor] = useState<number | null>(null);
   const [pessoas, setPessoas] = useState<any[]>([]); const [tipos, setTipos] = useState<any[]>([]); const [contatos, setContatos] = useState<any[]>([]);
-  const [tiposProj, setTiposProj] = useState<string[]>([]); const [subtipos, setSubtipos] = useState<string[]>([]);
+  const [tiposProj, setTiposProj] = useState<string[]>([]); const [macrosPadrao, setMacrosPadrao] = useState<string[]>([]);
   const [pode, setPode] = useState(false); const [erro, setErro] = useState(""); const [dlg, setDlg] = useState<any>(null);
   const [histA, setHistA] = useState<any[]>([]); const [histE, setHistE] = useState<any[]>([]);
   const [aba, setAba] = useState("escopo"); const [npsL, setNpsL] = useState<any[]>([]); const [reacao, setReacao] = useState<any[]>([]); const [liquido, setLiquido] = useState<number | null>(null);
@@ -47,7 +47,7 @@ function Detalhe() {
     setPessoas(pe.data || []); setTipos(ti.data || []); setPode(pd.data === true); setContatos(ct.data || []);
     const ops = (await supabase.from("opcoes_sistema").select("grupo,nome").eq("ativo", true).order("ordem")).data || [];
     setTiposProj(ops.filter((x: any) => x.grupo === "tipo_projeto").map((x: any) => x.nome));
-    setSubtipos(ops.filter((x: any) => x.grupo === "subtipo_projeto").map((x: any) => x.nome));
+    setMacrosPadrao(ops.filter((x: any) => x.grupo === "macroetapa_padrao").map((x: any) => x.nome));
     setReacao((await supabase.from("avaliacoes_reacao").select("*, consultor:perfis(nome)").eq("projeto_id", id).order("data", { ascending: false })).data || []);
     setNpsL((await supabase.from("nps_respostas").select("*").eq("projeto_id", id).order("data", { ascending: false })).data || []);
     if (pd.data === true) {
@@ -105,8 +105,9 @@ function Detalhe() {
 
   return (<>
     <Link href="/projetos" className="backbar"><span className="arr">←</span><span>Todos os projetos</span></Link>
-    <header className="cx-head"><div><h1>{p.nome}</h1><div className="meta">{p.clientes?.nome} · {p.codigo} · GP: {pessoa(p.responsavel_id)}{p.apoio_id ? ` · Líder técnico: ${pessoa(p.apoio_id)}` : ""}{p.tipo_projeto ? ` · ${p.tipo_projeto}${p.subtipo ? " · " + p.subtipo : ""}` : ""}{p.modalidade === "full_service" ? " · Full service" : ""}</div></div>
+    <header className="cx-head"><div><h1>{p.nome}</h1><div className="meta">{p.clientes?.nome} · {p.codigo} · GP: {pessoa(p.responsavel_id)}{p.apoio_id ? ` · Líder técnico: ${pessoa(p.apoio_id)}` : ""}{p.tipo_projeto ? ` · ${p.tipo_projeto}` : ""}{p.modalidade === "full_service" ? " · Full service" : ""}</div></div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <select disabled={!pode} value={p.tipo_projeto || ""} onChange={e => upd("projetos", id, { tipo_projeto: e.target.value || null })} aria-label="Classificação do projeto"><option value="">Classificação: Não definida</option>{tiposProj.map(t => <option key={t} value={t}>Classificação: {t}</option>)}</select>
         <select disabled={!pode} value={p.fase || ""} onChange={e => upd("projetos", id, { fase: e.target.value || null })} aria-label="Fase"><option value="">Sem fase</option>{Object.entries(FASE).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
         <select disabled={!pode} value={p.situacao} onChange={e => upd("projetos", id, { situacao: e.target.value })} aria-label="Status do projeto">{Object.entries(SITUACAO).map(([k, v]) => <option key={k} value={k}>Status: {v}</option>)}</select>
         <select disabled={!pode} value={p.prioridade || "media"} onChange={e => upd("projetos", id, { prioridade: e.target.value })} aria-label="Prioridade">{Object.entries(PRIORIDADE).map(([k, v]) => <option key={k} value={k}>Prioridade: {v}</option>)}</select>
@@ -145,7 +146,7 @@ function Detalhe() {
         {es.map(e => { const t = prazoTag(e.data_prevista, e.status); const v = val(e); const ls = ativs.filter(a => a.entregavel_id === e.id); const lc = ls.filter(a => a.status === "concluido").length;
           return <div key={e.id} className={"ent" + (atrasado(e.data_prevista, e.status) ? " late" : "")} style={{ ["--c" as any]: STATUS_COR[e.status] }}>
             <div className="rowh" style={{ marginBottom: 4 }}><div><h3>{e.quantidade > 1 ? `${e.quantidade}x ` : ""}{e.nome}</h3>
-              <div className="meta">{tag(e.status)} · prazo {dataBR(e.data_prevista)}{e.hora_prevista ? " às " + e.hora_prevista.slice(0, 5) : ""} {e.tipos_entregavel?.nome ? "· " + e.tipos_entregavel.nome : ""}{e.uf ? ` · ${e.cidade ? e.cidade + "/" : ""}${e.uf}` : ""} · Responsável: {pode ? <select aria-label="Responsável pela entrega" style={{ padding: "2px 4px", fontSize: 13 }} value={e.responsavel_id || ""} onChange={ev => upd("entregaveis", e.id, { responsavel_id: ev.target.value || null })}><option value="">Definir</option>{pessoas.map(x => <option key={x.id} value={x.id}>{x.nome}</option>)}</select> : (e.resp?.nome || "não definido")} {t && <span className={"tag " + t.c}>{t.t}</span>} {!e.gera_receita && <span className="tag">Não paga</span>}{e.pax != null && <span className="tag">{e.pax} pessoas</span>} <span className="tag">{lc} de {ls.length} linhas no cronograma</span></div></div>
+              <div className="meta">{tag(e.status)} · prazo {dataBR(e.data_prevista)}{e.hora_prevista ? " às " + e.hora_prevista.slice(0, 5) : ""} · Entregável: {pode ? <select aria-label="Classificação do entregável" style={{ padding: "2px 4px", fontSize: 13 }} value={e.tipo_id || ""} onChange={ev => upd("entregaveis", e.id, { tipo_id: ev.target.value || null })}><option value="">Definir entregável</option>{tipos.map(x => <option key={x.id} value={x.id}>{x.nome}</option>)}</select> : (e.tipos_entregavel?.nome || "não definido")}{e.uf ? ` · ${e.cidade ? e.cidade + "/" : ""}${e.uf}` : ""} · Responsável: {pode ? <select aria-label="Responsável pela entrega" style={{ padding: "2px 4px", fontSize: 13 }} value={e.responsavel_id || ""} onChange={ev => upd("entregaveis", e.id, { responsavel_id: ev.target.value || null })}><option value="">Definir</option>{pessoas.map(x => <option key={x.id} value={x.id}>{x.nome}</option>)}</select> : (e.resp?.nome || "não definido")} {t && <span className={"tag " + t.c}>{t.t}</span>} {!e.gera_receita && <span className="tag">Não paga</span>}{e.pax != null && <span className="tag">{e.pax} pessoas</span>} <span className="tag">{lc} de {ls.length} linhas no cronograma</span></div></div>
               <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                 {pode && <label className="meta" title="Entrega paga gera receita. Desmarque para entregas sem cobrança."><input type="checkbox" checked={e.gera_receita} disabled={e.status === "concluido"} onChange={ev => mudarPaga(e, ev.target.checked)} /> Paga</label>}
                 {pode && <input aria-label="Pessoas impactadas (PAX)" type="number" min={0} style={{ width: 90 }} key={"pax" + String(e.pax)} defaultValue={e.pax ?? ""} placeholder="PAX" onBlur={ev => { const n = ev.target.value === "" ? null : Number(ev.target.value); if (n !== (e.pax ?? null)) upd("entregaveis", e.id, { pax: n }); }} />}
@@ -174,8 +175,7 @@ function Detalhe() {
       <p><b>Período:</b> {dataBR(p.inicio_previsto)} a {dataBR(p.fim_previsto)}</p>
       <p><b>Responsabilidades da Conectas:</b> {p.resp_conectas || "-"}</p><p><b>Responsabilidades do cliente:</b> {p.resp_cliente || "-"}</p>
       <div className="fbar">
-        <label className="f">Tipo de projeto<select disabled={!pode} value={p.tipo_projeto || ""} onChange={e => upd("projetos", id, { tipo_projeto: e.target.value || null })}><option value="">Não definido</option>{tiposProj.map(t => <option key={t} value={t}>{t}</option>)}</select></label>
-        <label className="f">Subtipo<select disabled={!pode} value={p.subtipo || ""} onChange={e => upd("projetos", id, { subtipo: e.target.value || null })}><option value="">Não definido</option>{subtipos.map(s => <option key={s} value={s}>{s}</option>)}</select></label>
+        <label className="f">Classificação do projeto<select disabled={!pode} value={p.tipo_projeto || ""} onChange={e => upd("projetos", id, { tipo_projeto: e.target.value || null })}><option value="">Não definida</option>{tiposProj.map(t => <option key={t} value={t}>{t}</option>)}</select></label>
         <label className="f">Líder técnico<select disabled={!pode} value={p.apoio_id || ""} onChange={e => upd("projetos", id, { apoio_id: e.target.value || null })}><option value="">Sem líder técnico</option>{pessoas.map(x => <option key={x.id} value={x.id}>{x.nome}</option>)}</select></label>
         <label className="f">Logística<select disabled={!pode} value={p.logistica_por || ""} onChange={e => upd("projetos", id, { logistica_por: e.target.value || null })}><option value="">Não definida</option>{Object.entries(LOGISTICA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
         <label className="f w">Observações de logística<input disabled={!pode} key={"lo" + (p.logistica_obs || "")} defaultValue={p.logistica_obs || ""} placeholder="Quem compra passagem, hospedagem, material..." onBlur={e => { if (e.target.value !== (p.logistica_obs || "")) upd("projetos", id, { logistica_obs: e.target.value || null }); }} /></label>
@@ -193,9 +193,9 @@ function Detalhe() {
         <div className="tw"><table><thead><tr><th>Quando</th><th>O quê</th><th>Ação</th><th>Por</th></tr></thead><tbody>
           {histE.map((h, i) => <tr key={i}><td>{new Date(h.em).toLocaleString("pt-BR")}</td><td>{h.tabela}{h.resumo ? " · " + h.resumo : ""}</td><td>{h.acao === "INSERT" ? "Criado" : h.acao === "UPDATE" ? "Alterado" : "Removido"}</td><td>{pessoa(h.usuario_id)}</td></tr>)}</tbody></table></div>}</section></>}
 
-    {dlg?.t === "macro" && <FormMacro p={p} n={macros.length} onClose={() => { setDlg(null); carregar(); }} />}
+    {dlg?.t === "macro" && <FormMacro p={p} n={macros.length} tiposProj={tiposProj} macrosPadrao={macrosPadrao} onClose={() => { setDlg(null); carregar(); }} />}
     {dlg?.t === "ent" && <FormEnt p={p} m={dlg.m} tipos={tipos} pessoas={pessoas} finEd={finEd} onClose={() => { setDlg(null); carregar(); }} />}
-    {dlg?.t === "ativ" && <FormAtiv p={p} ents={ents} e={dlg.e} a={dlg.a} pessoas={pessoas} contatos={contatos} finEd={finEd} onClose={() => { setDlg(null); carregar(); }} />}
+    {dlg?.t === "ativ" && <FormAtiv p={p} macros={macros} ents={ents} tipos={tipos} e={dlg.e} a={dlg.a} pessoas={pessoas} contatos={contatos} finEd={finEd} onClose={() => { setDlg(null); carregar(); }} />}
   </>);
 }
 
@@ -205,9 +205,17 @@ function Form({ titulo, onClose, onSave, children }: any) {
     <div className="fg">{children}</div>{erro && <p className="erro">{erro}</p>}
     <div className="acts"><button type="button" className="btn" onClick={onClose}>Cancelar</button><button className="btn p">Salvar</button></div></form></Dialog>;
 }
-function FormMacro({ p, n, onClose }: any) {
-  const [nome, setNome] = useState("");
-  return <Form titulo="Nova macroetapa" onClose={onClose} onSave={async () => (await supabase.from("macroetapas").insert({ escopo_id: p.escopo_vigente_id, projeto_id: p.id, nome, ordem: n + 1 })).error}>
+function FormMacro({ p, n, tiposProj = [], macrosPadrao = [], onClose }: any) {
+  const [nome, setNome] = useState(macrosPadrao[0] || "");
+  const [classif, setClassif] = useState(p.tipo_projeto || "");
+  return <Form titulo="Nova macroetapa e classificação do projeto" onClose={onClose} onSave={async () => {
+    if (classif !== (p.tipo_projeto || "")) {
+      await supabase.from("projetos").update({ tipo_projeto: classif || null }).eq("id", p.id);
+    }
+    return (await supabase.from("macroetapas").insert({ escopo_id: p.escopo_vigente_id, projeto_id: p.id, nome, ordem: n + 1 })).error;
+  }}>
+    <label className="f w">Classificação do projeto<select value={classif} onChange={e => setClassif(e.target.value)}><option value="">Selecione (Palestra, Projeto, Programa, Workshop, Consultoria...)</option>{tiposProj.map((t: string) => <option key={t} value={t}>{t}</option>)}</select></label>
+    {macrosPadrao.length > 0 && <label className="f w">Escolher macroetapa padrão<select value={macrosPadrao.includes(nome) ? nome : ""} onChange={e => { if (e.target.value) setNome(e.target.value); }}><option value="">Personalizada (digitar abaixo)</option>{macrosPadrao.map((m: string) => <option key={m} value={m}>{m}</option>)}</select></label>}
     <label className="f w">Nome da macroetapa<input required value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex.: Contextualização" /></label></Form>;
 }
 function FormEnt({ p, m, tipos, pessoas, finEd, onClose }: any) {
@@ -219,11 +227,11 @@ function FormEnt({ p, m, tipos, pessoas, finEd, onClose }: any) {
     if (total > 0) { const r = await supabase.from("alocacoes_valor").insert({ entregavel_id: data.id, valor: total }); if (r.error) return r.error; }
     // quantidade N = N linhas no cronograma, cada uma com a sua parte do valor
     const base = Math.floor(total / N * 100) / 100;
-    const linhas = Array.from({ length: N }, (_, i) => ({ entregavel_id: data.id, projeto_id: p.id, nome: N > 1 ? `${s.nome} (${i + 1}/${N})` : s.nome, responsavel_id: s.resp || null, data_prevista: s.data || null, hora_prevista: s.hora || null,
+    const linhas = Array.from({ length: N }, (_, i) => ({ entregavel_id: data.id, tipo_id: s.tipo || null, projeto_id: p.id, nome: N > 1 ? `${s.nome} (${i + 1}/${N})` : s.nome, responsavel_id: s.resp || null, data_prevista: s.data || null, hora_prevista: s.hora || null,
       gera_receita: s.receita && total > 0, valor: total > 0 ? (i === N - 1 ? Math.round((total - base * (N - 1)) * 100) / 100 : base) : null }));
     return (await supabase.from("atividades").insert(linhas)).error; }}>
     <label className="f w">Nome do entregável<input required value={s.nome} onChange={e => setS({ ...s, nome: e.target.value })} placeholder="Ex.: Entrevistas com lideranças" /></label>
-    <label className="f">Tipo<select value={s.tipo} onChange={e => setS({ ...s, tipo: e.target.value })}><option value="">Sem tipo</option>{tipos.map((t: any) => <option key={t.id} value={t.id}>{t.nome}</option>)}</select></label>
+    <label className="f">Entregável<select value={s.tipo} onChange={e => { const tid = e.target.value; const tObj = tipos.find((x: any) => x.id === tid); setS({ ...s, tipo: tid, nome: s.nome || (tObj ? tObj.nome : "") }); }}><option value="">Selecione o entregável</option>{tipos.map((t: any) => <option key={t.id} value={t.id}>{t.nome}</option>)}</select></label>
     <label className="f">Consultor responsável<select value={s.resp} onChange={e => setS({ ...s, resp: e.target.value })}><option value="">Definir depois</option>{pessoas.map((t: any) => <option key={t.id} value={t.id}>{t.nome}</option>)}</select></label>
     <label className="f">Quantidade (cria uma linha no cronograma por unidade)<input type="number" min={1} max={200} value={s.qtd} onChange={e => setS({ ...s, qtd: e.target.value })} /></label>
     <label className="f">Data prevista<input type="date" value={s.data} onChange={e => setS({ ...s, data: e.target.value })} /></label>
@@ -237,10 +245,33 @@ function FormEnt({ p, m, tipos, pessoas, finEd, onClose }: any) {
 }
 
 // Criar ou editar uma atividade do cronograma (linha do Kanban)
-function FormAtiv({ p, ents, e, a, pessoas, contatos, finEd, onClose }: any) {
+function FormAtiv({ p, macros = [], ents, tipos = [], e, a, pessoas, contatos, finEd, onClose }: any) {
   const edit = !!a;
-  const [s, setS] = useState<any>({ ent: a?.entregavel_id || e?.id || "", nome: a?.nome || "", resp: a?.responsavel_id || "", contato: a?.contato_id || "", cn: "", ce: "", tipo: a?.responsabilidade || "conectas", data: a?.data_prevista || "", hora: a?.hora_prevista?.slice(0, 5) || "",
-    prio: a?.prioridade || "media", log: !!a?.logistica, pend: a?.pendencia || "", local: a?.local || "", horas: a?.horas_previstas != null ? txtBR(a.horas_previstas) : "", part: a?.participantes || "", valor: a?.valor != null ? txtBR(a.valor) : "", paga: a ? !!a.gera_receita : !!e?.gera_receita });
+  const entInicial = ents.find((x: any) => x.id === (a?.entregavel_id || e?.id)) || null;
+  const [s, setS] = useState<any>({
+    macro: entInicial?.macroetapa_id || macros[0]?.id || "",
+    ent: a?.entregavel_id || e?.id || (ents.length ? "" : "__auto"),
+    tipoEnt: a?.tipo_id || entInicial?.tipo_id || "",
+    nome: a?.nome || "",
+    resp: a?.responsavel_id || "",
+    contato: a?.contato_id || "",
+    cn: "",
+    ce: "",
+    tipo: a?.responsabilidade || "conectas",
+    data: a?.data_prevista || "",
+    hora: a?.hora_prevista?.slice(0, 5) || "",
+    prio: a?.prioridade || "media",
+    log: !!a?.logistica,
+    pend: a?.pendencia || "",
+    local: a?.local || "",
+    horas: a?.horas_previstas != null ? txtBR(a.horas_previstas) : "",
+    part: a?.participantes || "",
+    valor: a?.valor != null ? txtBR(a.valor) : "",
+    paga: a ? !!a.gera_receita : !!e?.gera_receita,
+  });
+  const entsDaMacro = s.macro ? ents.filter((x: any) => x.macroetapa_id === s.macro) : ents;
+  const listaEnts = entsDaMacro.length > 0 ? entsDaMacro : ents;
+
   return <Form titulo={edit ? `Editar atividade` : "Nova atividade"} onClose={onClose} onSave={async () => {
     let contato = s.contato;
     if (contato === "__novo") {
@@ -248,12 +279,45 @@ function FormAtiv({ p, ents, e, a, pessoas, contatos, finEd, onClose }: any) {
       const r = await supabase.from("contatos").insert({ nome: s.cn, email: s.ce || null, tipo: s.tipo === "cliente" ? "cliente" : "terceiro" }).select("id").single();
       if (r.error) return r.error; contato = r.data.id;
     }
-    const body: any = { nome: s.nome, responsavel_id: s.resp || null, contato_id: contato || null, responsabilidade: s.tipo, data_prevista: s.data || null, hora_prevista: s.hora || null, local: s.local || null,
+    let entregavelId = s.ent;
+    if (!entregavelId || entregavelId === "__auto") {
+      const macroId = s.macro || macros[0]?.id;
+      if (!macroId) return true;
+      const tipoObj = tipos.find((t: any) => t.id === s.tipoEnt);
+      const nomeEnt = tipoObj?.nome || s.nome;
+      const novoE = await supabase.from("entregaveis").insert({
+        macroetapa_id: macroId,
+        projeto_id: p.id,
+        escopo_id: p.escopo_vigente_id,
+        tipo_id: s.tipoEnt || null,
+        nome: nomeEnt,
+        quantidade: 1,
+        data_prevista: s.data || null,
+        hora_prevista: s.hora || null,
+        responsavel_id: s.resp || null,
+        gera_receita: s.paga,
+      }).select("id").single();
+      if (novoE.error || !novoE.data) return novoE.error || true;
+      entregavelId = novoE.data.id;
+    } else if (s.tipoEnt) {
+      await supabase.from("entregaveis").update({ tipo_id: s.tipoEnt }).eq("id", entregavelId);
+    }
+    const body: any = { nome: s.nome, tipo_id: s.tipoEnt || null, responsavel_id: s.resp || null, contato_id: contato || null, responsabilidade: s.tipo, data_prevista: s.data || null, hora_prevista: s.hora || null, local: s.local || null,
       horas_previstas: s.horas === "" ? null : numBR(s.horas), participantes: s.part || null, prioridade: s.prio, logistica: s.log, pendencia: s.pend || null };
     if (finEd) { body.valor = s.valor === "" ? null : numBR(s.valor); body.gera_receita = s.paga && (body.valor || 0) > 0; }
-    if (edit) return (await supabase.from("atividades").update(body).eq("id", a.id)).error;
-    return (await supabase.from("atividades").insert({ ...body, entregavel_id: s.ent, projeto_id: p.id })).error; }}>
-    <label className="f w">Entregável<select required disabled={edit} value={s.ent} onChange={x => setS({ ...s, ent: x.target.value })}><option value="">Selecione</option>{ents.map((t: any) => <option key={t.id} value={t.id}>{t.nome}</option>)}</select></label>
+    if (edit) return (await supabase.from("atividades").update({ ...body, entregavel_id: entregavelId }).eq("id", a.id)).error;
+    return (await supabase.from("atividades").insert({ ...body, entregavel_id: entregavelId, projeto_id: p.id })).error; }}>
+    {macros.length > 0 && <label className="f">Macroetapa<select value={s.macro} onChange={x => setS({ ...s, macro: x.target.value })}><option value="">Todas</option>{macros.map((m: any) => <option key={m.id} value={m.id}>{m.nome}</option>)}</select></label>}
+    <label className="f">Entregável (Classificação)<select required={!s.ent || s.ent === "__auto"} value={s.tipoEnt} onChange={x => {
+      const tid = x.target.value;
+      const tObj = tipos.find((t: any) => t.id === tid);
+      setS({ ...s, tipoEnt: tid, nome: s.nome || (tObj ? tObj.nome : "") });
+    }}><option value="">Selecione o entregável (Team Building, PDL...)</option>{tipos.map((t: any) => <option key={t.id} value={t.id}>{t.nome}</option>)}</select></label>
+    <label className="f w">Entrega vinculada no escopo<select required value={s.ent} onChange={x => {
+      const eid = x.target.value;
+      const eObj = ents.find((k: any) => k.id === eid);
+      setS({ ...s, ent: eid, tipoEnt: eObj?.tipo_id || s.tipoEnt, macro: eObj?.macroetapa_id || s.macro });
+    }}><option value="__auto">+ Criar nova entrega no escopo automaticamente</option>{listaEnts.map((t: any) => <option key={t.id} value={t.id}>{t.nome}{t.tipos_entregavel?.nome ? ` (${t.tipos_entregavel.nome})` : ""}</option>)}</select></label>
     <label className="f w">Nome da atividade<input required value={s.nome} onChange={x => setS({ ...s, nome: x.target.value })} placeholder="Ex.: Agendar entrevistas" /></label>
     <label className="f">Responsável (equipe)<select value={s.resp} onChange={x => setS({ ...s, resp: x.target.value })}><option value="">Definir depois</option>{pessoas.map((t: any) => <option key={t.id} value={t.id}>{t.nome}</option>)}</select></label>
     <label className="f">Ou contato externo (cliente, parceiro)<select value={s.contato} onChange={x => setS({ ...s, contato: x.target.value })}><option value="">Nenhum</option>{contatos.map((t: any) => <option key={t.id} value={t.id}>{t.nome}{t.email ? " · " + t.email : ""}</option>)}<option value="__novo">Cadastrar novo contato</option></select></label>

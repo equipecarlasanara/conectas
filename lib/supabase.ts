@@ -92,10 +92,19 @@ function seedDB() {
   ];
 
   const tipos_entregavel = [
+    "Team Building",
+    "PDL",
+    "Coaching",
+    "Assessment",
+    "Assessment (MBTI)",
+    "Treinamento Indoor",
+    "Treinamento Outdoor",
+    "PDE",
     "Diagnóstico",
+    "Cargos e Salários",
+    "Onboarding",
     "Entrevista",
     "Focus group",
-    "Assessment (MBTI)",
     "Visita de campo",
     "Workshop",
     "Programa de desenvolvimento de liderança",
@@ -110,10 +119,7 @@ function seedDB() {
   ].map((nome, i) => ({ id: `tipo-${i + 1}`, nome, ativo: true }));
 
   const opcoes_sistema = [
-    ...["PDL", "Coaching", "Assessment", "Treinamento Indoor", "Treinamento Outdoor", "PDE", "Team Building", "Diagnóstico", "Cargos e Salários", "Onboarding"].map(
-      (nome, i) => ({ id: `opt-sub-${i + 1}`, grupo: "subtipo_projeto", nome, ordem: i + 1, ativo: true })
-    ),
-    ...["Palestra", "Workshop", "Programa", "Projeto", "Consultoria"].map((nome, i) => ({
+    ...["Palestra", "Projeto", "Programa", "Workshop", "Consultoria"].map((nome, i) => ({
       id: `opt-tp-${i + 1}`,
       grupo: "tipo_projeto",
       nome,
@@ -568,8 +574,24 @@ function getDB(): Record<string, any[]> {
           if (p.situacao === "execucao") p.situacao = "em_execucao";
         });
       }
+      let changed = false;
       if (!Array.isArray(parsed.opcoes_sistema) || parsed.opcoes_sistema.length === 0) {
         parsed.opcoes_sistema = seedDB().opcoes_sistema;
+        changed = true;
+      } else if (parsed.opcoes_sistema.some((x: any) => x.grupo === "subtipo_projeto")) {
+        parsed.opcoes_sistema = parsed.opcoes_sistema.filter((x: any) => x.grupo !== "subtipo_projeto");
+        changed = true;
+      }
+      if (Array.isArray(parsed.tipos_entregavel)) {
+        const existentes = new Set(parsed.tipos_entregavel.map((x: any) => String(x.nome).toLowerCase()));
+        for (const item of seedDB().tipos_entregavel) {
+          if (!existentes.has(item.nome.toLowerCase())) {
+            parsed.tipos_entregavel.push({ id: uuid(), nome: item.nome, ativo: true });
+            changed = true;
+          }
+        }
+      }
+      if (changed) {
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
       }
       return parsed;
@@ -627,7 +649,15 @@ function enrichRow(table: string, row: any, db: Record<string, any[]>) {
   } else if (table === "atividades") {
     copy.resp = db.perfis.find((p) => p.id === row.responsavel_id) || null;
     copy.contato = db.contatos.find((c) => c.id === row.contato_id) || null;
-    copy.entregaveis = db.entregaveis.find((e) => e.id === row.entregavel_id) || null;
+    const ent = db.entregaveis.find((e) => e.id === row.entregavel_id) || null;
+    copy.entregaveis = ent
+      ? {
+          ...ent,
+          tipos_entregavel: db.tipos_entregavel.find((t) => t.id === ent.tipo_id) || null,
+          macroetapas: db.macroetapas.find((m) => m.id === ent.macroetapa_id) || null,
+        }
+      : null;
+    copy.tipos_entregavel = db.tipos_entregavel.find((t) => t.id === (row.tipo_id || ent?.tipo_id)) || null;
     copy.projetos = db.projetos.find((p) => p.id === row.projeto_id) || null;
   } else if (table === "clientes") {
     copy.projetos = db.projetos.filter((p) => p.cliente_id === row.id);

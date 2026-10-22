@@ -15,11 +15,10 @@ export default function Page() {
 }
 
 const GRUPOS_OPCOES = [
-  { id: "subtipo_projeto", titulo: "Subtipos de projeto", desc: "Nomes e soluções que a Conectas utiliza nos projetos (ex.: PDL, Coaching, Assessment, PDE, Vendas Consultivas...)." },
-  { id: "tipo_projeto", titulo: "Tipos de projeto", desc: "Classificação principal do projeto (ex.: Palestra, Workshop, Programa, Projeto, Consultoria)." },
-  { id: "tipos_entregavel", titulo: "Tipos de entregável", desc: "Formatos de entrega disponíveis ao cadastrar entregáveis no escopo dos projetos." },
+  { id: "macroetapa_padrao", titulo: "Macroetapas padrão", desc: "Etapas padrão do método Conectas criadas nos projetos (ex.: Contextualização, Conteúdo, Conexão, Consolidação, Concretização)." },
   { id: "categoria_despesa", titulo: "Categorias de despesa", desc: "Categorias para lançamento de gastos e orçamento na aba Financeiro de cada projeto." },
-  { id: "macroetapa_padrao", titulo: "Macroetapas padrão", desc: "Macroetapas criadas automaticamente ao abrir um novo projeto." },
+  { id: "tipo_projeto", titulo: "Classificação do projeto", desc: "Classificação do projeto (se é Palestra, Projeto, Programa, Workshop, Consultoria)." },
+  { id: "tipos_entregavel", titulo: "Entregáveis", desc: "Catálogo de entregáveis da Conectas para classificar entregas e atividades (ex.: Team Building, PDL, Coaching, Assessment, Diagnóstico...)." },
 ];
 
 function Admin() {
@@ -130,7 +129,7 @@ function Admin() {
           Usuários, Permissões &amp; Substituições
         </button>
         <button className={aba === "parametros" ? "on" : ""} onClick={() => setAba("parametros")}>
-          Listas e Parâmetros do Sistema (Subtipos, Tipos, Categorias)
+          Listas e Parâmetros do Sistema
         </button>
       </div>
 
@@ -320,7 +319,7 @@ function Admin() {
 }
 
 function ParametrosSistema() {
-  const [grupoAtivo, setGrupoAtivo] = useState("subtipo_projeto");
+  const [grupoAtivo, setGrupoAtivo] = useState("macroetapa_padrao");
   const [itens, setItens] = useState<any[]>([]);
   const [novoNome, setNovoNome] = useState("");
   const [erro, setErro] = useState("");
