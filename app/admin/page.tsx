@@ -65,7 +65,7 @@ function Admin() {
     const {
       data: { session },
     } = await supabase.auth.getSession();
-    if (session?.access_token?.startsWith("local-token-")) {
+    const cadastrarDireto = async () => {
       const { error } = await supabase.from("perfis").insert({
         nome: nu.nome.trim(),
         email: nu.email.trim().toLowerCase(),
@@ -86,21 +86,32 @@ function Admin() {
       setOk(`Usuário cadastrado. Passe o e-mail e a senha provisória para ${nu.nome}.`);
       setNu({ nome: "", email: "", senha: "", papel: "gestora", fin: "nenhum" });
       carregar();
+    };
+    if (session?.access_token?.startsWith("local-token-")) {
+      await cadastrarDireto();
       return;
     }
-    const r = await fetch("/api/admin/usuarios", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
-      body: JSON.stringify(nu),
-    });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) {
-      setErro(j.erro || "Não foi possível cadastrar. Tente de novo.");
-      return;
+    try {
+      const r = await fetch("/api/admin/usuarios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify(nu),
+      });
+      if (r.status === 404 || r.status === 405) {
+        await cadastrarDireto();
+        return;
+      }
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setErro(j.erro || "Não foi possível cadastrar. Tente de novo.");
+        return;
+      }
+      setOk(`Usuário cadastrado. Passe o e-mail e a senha provisória para ${nu.nome}.`);
+      setNu({ nome: "", email: "", senha: "", papel: "gestora", fin: "nenhum" });
+      carregar();
+    } catch {
+      await cadastrarDireto();
     }
-    setOk(`Usuário cadastrado. Passe o e-mail e a senha provisória para ${nu.nome}.`);
-    setNu({ nome: "", email: "", senha: "", papel: "gestora", fin: "nenhum" });
-    carregar();
   }
 
   const nome = (id: string) => u.find((x) => x.id === id)?.nome || "-";

@@ -6,6 +6,7 @@ import Dialog from "@/components/Dialog";
 import { useAuth } from "@/components/Auth";
 import { supabase } from "@/lib/supabase";
 import { PRIORIDADE, SITUACAO, FASE, TIPOS_PROJETO, STATUS, dataBR, atrasado, brl } from "@/lib/format";
+import { ehCronograma, lerCronograma } from "@/lib/importar/cronograma";
 
 export default function Page() { return <Shell><Projetos /></Shell>; }
 
@@ -48,19 +49,38 @@ function Projetos() {
   async function ler(aba?: string) {
     const arq = arqRef.current?.files?.[0]; if (!arq) { setErroLeitura("Escolha um arquivo primeiro."); return; }
     setLendo(true); setErroLeitura(""); setAbas(null); setPrev(null);
-    const { data: { session } } = await supabase.auth.getSession();
-    const fd = new FormData(); fd.append("arquivo", arq); if (aba) fd.append("aba", aba);
-    try {
-      const r = await fetch("/api/importar", { method: "POST", headers: { Authorization: `Bearer ${session?.access_token}` }, body: fd });
-      const j = await r.json();
-      if (!r.ok) { setErroLeitura(j.erro || "Não foi possível ler o arquivo."); return; }
+    const aplicarPrevia = (j: any) => {
       if (j.escolher_aba) { setAbas(j.escolher_aba); return; }
       setPrev(j);
       setArv(j.macroetapas.map((m: any) => ({ ...m, incluir: true, entregaveis: m.entregaveis.map((e: any) => ({ ...e, incluir: true })) })));
       const achado = clientes.find(c => j.cliente && norm(c.nome) === norm(j.cliente));
       setN((x: any) => ({ ...x, nome: x.nome || j.projeto || (j.cliente ? `${j.cliente}` : ""), descricao: x.descricao || j.descricao || "", cliente: achado ? achado.id : (j.cliente ? "__novo" : x.cliente) }));
       setNovoCliente(achado ? "" : (j.cliente || ""));
-    } catch { setErroLeitura("Não foi possível ler o arquivo. Tente de novo."); } finally { setLendo(false); }
+    };
+    try {
+      if (/\.(xlsx|xlsm|xls|csv)$/i.test(arq.name)) {
+        const XLSX = await import("xlsx");
+        const buf = await arq.arrayBuffer();
+        const wb = XLSX.read(buf, { cellDates: true });
+        const listaAbas = wb.SheetNames.map(nm => ({ n: nm, rows: XLSX.utils.sheet_to_json<any[]>(wb.Sheets[nm], { header: 1, raw: true, defval: null }) }));
+        const cron = listaAbas.filter(a => ehCronograma(a.rows));
+        if (cron.length > 0) {
+          if (cron.length > 1 && !aba) {
+            aplicarPrevia({ escolher_aba: cron.map(a => { const r = lerCronograma(a.rows, a.n); return { aba: a.n, cliente: r.cliente, atividades: r.total.atividades }; }) });
+            return;
+          }
+          const alvo = cron.find(a => a.n === aba) || cron[0];
+          aplicarPrevia({ ...lerCronograma(alvo.rows, alvo.n), fonte: "cronograma" });
+          return;
+        }
+      }
+      const { data: { session } } = await supabase.auth.getSession();
+      const fd = new FormData(); fd.append("arquivo", arq); if (aba) fd.append("aba", aba);
+      const r = await fetch("/api/importar", { method: "POST", headers: { Authorization: `Bearer ${session?.access_token}` }, body: fd });
+      const j = await r.json();
+      if (!r.ok) { setErroLeitura(j.erro || "Não foi possível ler o arquivo."); return; }
+      aplicarPrevia(j);
+    } catch { setErroLeitura("Planilhas no formato de cronograma são lidas automaticamente; para arquivos comerciais (PDF/DOCX) preencha manualmente caso a leitura por IA não esteja ativa."); } finally { setLendo(false); }
   }
 
   const setM = (i: number, c: any) => setArv(a => a.map((m, k) => k === i ? { ...m, ...c } : m));
