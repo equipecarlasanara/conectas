@@ -79,3 +79,20 @@ insert into opcoes_sistema (grupo, nome, ordem) values
   ('macroetapa_padrao', 'Consolidação', 4),
   ('macroetapa_padrao', 'Concretização', 5)
 on conflict (grupo, nome) do nothing;
+
+-- Garante que carla.sanara@conectas.com.br, ju.moura@conectas.com.br e financeiro@conectas.com.br recebam perfil admin com acesso financeiro total
+create or replace function handle_new_user() returns trigger language plpgsql security definer set search_path = public as $$
+declare eh_admin boolean;
+begin
+  select (not exists (select 1 from perfis)) or (lower(new.email) in ('carla.sanara@conectas.com.br', 'ju.moura@conectas.com.br', 'financeiro@conectas.com.br')) into eh_admin;
+  insert into perfis(id, nome, email, papel, fin)
+  values (new.id,
+          coalesce(new.raw_user_meta_data->>'nome', split_part(new.email,'@',1)),
+          lower(new.email),
+          case when eh_admin then 'admin'::papel else 'gestora'::papel end,
+          case when eh_admin then 'validar'::nivel_fin else 'nenhum'::nivel_fin end);
+  return new;
+end $$;
+
+update perfis set papel = 'admin', fin = 'validar', ativo = true
+where lower(email) in ('carla.sanara@conectas.com.br', 'ju.moura@conectas.com.br', 'financeiro@conectas.com.br');

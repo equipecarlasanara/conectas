@@ -35,8 +35,22 @@ function seedDB() {
     },
     {
       id: "u-ju",
-      nome: "Ju",
-      email: "ju@conectas.com.br",
+      nome: "Ju Moura",
+      email: "ju.moura@conectas.com.br",
+      papel: "admin",
+      fin: "validar",
+      ativo: true,
+      acesso_projetos: "todos",
+      ver_geral: true,
+      ver_impactometro: true,
+      ver_pax_consultor: true,
+      ver_capacidade: true,
+      carga_horas_mes: 176,
+    },
+    {
+      id: "u-financeiro",
+      nome: "Financeiro Conectas",
+      email: "financeiro@conectas.com.br",
       papel: "admin",
       fin: "validar",
       ativo: true,
@@ -190,6 +204,36 @@ function getDB(): Record<string, any[]> {
         for (const item of seedDB().tipos_entregavel) {
           if (!existentes.has(item.nome.toLowerCase())) {
             parsed.tipos_entregavel.push({ id: uuid(), nome: item.nome, ativo: true });
+            changed = true;
+          }
+        }
+      }
+      if (Array.isArray(parsed.perfis)) {
+        const adminsFixos = [
+          { id: "u-carla", nome: "Carla Sanara", email: "carla.sanara@conectas.com.br" },
+          { id: "u-ju", nome: "Ju Moura", email: "ju.moura@conectas.com.br" },
+          { id: "u-financeiro", nome: "Financeiro Conectas", email: "financeiro@conectas.com.br" },
+        ];
+        for (const adm of adminsFixos) {
+          const ex = parsed.perfis.find((p: any) => String(p.email).toLowerCase() === adm.email);
+          if (!ex) {
+            parsed.perfis.unshift({
+              ...adm,
+              papel: "admin",
+              fin: "validar",
+              ativo: true,
+              acesso_projetos: "todos",
+              ver_geral: true,
+              ver_impactometro: true,
+              ver_pax_consultor: true,
+              ver_capacidade: true,
+              carga_horas_mes: 176,
+            });
+            changed = true;
+          } else if (ex.papel !== "admin" || ex.fin !== "validar") {
+            ex.papel = "admin";
+            ex.fin = "validar";
+            ex.ativo = true;
             changed = true;
           }
         }
@@ -662,20 +706,22 @@ export const supabase: any = {
 
       // Fallback local: permite entrar imediatamente (o 1º usuário / carla.sanara vira Admin com financeiro completo)
       const db = getDB();
+      const adminsEmails = ["carla.sanara@conectas.com.br", "ju.moura@conectas.com.br", "financeiro@conectas.com.br"];
+      const ehAdminFixo = adminsEmails.includes(cleanEmail);
       let perfil = db.perfis.find((p) => p.email.toLowerCase() === cleanEmail);
       if (!perfil) {
         const nomeBase = cleanEmail.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
         perfil = {
           id: uuid(),
-          nome: nomeBase || "Carla Sanara",
+          nome: nomeBase || "Usuária Conectas",
           email: cleanEmail,
-          papel: "admin",
-          fin: "validar",
+          papel: ehAdminFixo ? "admin" : "gestora",
+          fin: ehAdminFixo ? "validar" : "nenhum",
           ativo: true,
           acesso_projetos: "todos",
           ver_geral: true,
           ver_impactometro: true,
-          ver_pax_consultor: true,
+          ver_pax_consultor: ehAdminFixo,
           ver_capacidade: true,
           carga_horas_mes: 176,
         };
