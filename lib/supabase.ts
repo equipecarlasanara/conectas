@@ -404,17 +404,10 @@ function getDB(): Record<string, any[]> {
         }
       }
       if (Array.isArray(parsed.perfis)) {
-        const emailsExemplosRemover = new Set([
-          "carla.sanara@conectas.com.br",
-          "angelica@conectas.com.br",
-          "marcelle@conectas.com.br",
-          "rosangela@conectas.com.br",
-          "ju@conectas.com.br",
-        ]);
         const idsExemplosRemover = new Set(["u-carla", "u-angelica", "u-marcelle", "u-rosangela"]);
         const antes = parsed.perfis.length;
         parsed.perfis = parsed.perfis.filter(
-          (p: any) => !emailsExemplosRemover.has(String(p.email || "").toLowerCase()) && !idsExemplosRemover.has(String(p.id || ""))
+          (p: any) => !idsExemplosRemover.has(String(p.id || "")) && String(p.email || "").toLowerCase() !== "ju@conectas.com.br"
         );
         if (parsed.perfis.length !== antes) changed = true;
 

@@ -65,9 +65,11 @@ function Admin() {
       data: { session },
     } = await supabase.auth.getSession();
     const cadastrarDireto = async () => {
-      const { error } = await supabase.from("perfis").insert({
+      const emailLimpo = nu.email.trim().toLowerCase();
+      const existente = u.find((p) => String(p.email || "").toLowerCase() === emailLimpo);
+      const dadosPerfil = {
         nome: nu.nome.trim(),
-        email: nu.email.trim().toLowerCase(),
+        email: emailLimpo,
         senha: nu.senha,
         papel: nu.papel,
         fin: nu.fin,
@@ -78,12 +80,15 @@ function Admin() {
         ver_pax_consultor: nu.papel === "admin",
         ver_capacidade: nu.papel === "admin" || nu.papel === "gestora" || nu.papel === "lider_tecnico",
         carga_horas_mes: 176,
-      });
+      };
+      const { error } = existente
+        ? await supabase.from("perfis").update(dadosPerfil).eq("id", existente.id)
+        : await supabase.from("perfis").insert(dadosPerfil);
       if (error) {
         setErro("Não foi possível cadastrar. Tente de novo.");
         return;
       }
-      setOk(`Usuário cadastrado. Passe o e-mail e a senha provisória para ${nu.nome}.`);
+      setOk(`Usuário cadastrado com sucesso (${emailLimpo}). Passe o e-mail e a senha provisória para ${nu.nome}.`);
       setNu({ nome: "", email: "", senha: "", papel: "gestora", fin: "nenhum" });
       carregar();
     };
