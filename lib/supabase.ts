@@ -20,20 +20,6 @@ function hojeISO() {
 function seedDB() {
   const perfis = [
     {
-      id: "u-carla",
-      nome: "Carla Sanara",
-      email: "carla.sanara@conectas.com.br",
-      papel: "admin",
-      fin: "validar",
-      ativo: true,
-      acesso_projetos: "todos",
-      ver_geral: true,
-      ver_impactometro: true,
-      ver_pax_consultor: true,
-      ver_capacidade: true,
-      carga_horas_mes: 176,
-    },
-    {
       id: "u-ju",
       nome: "Ju Moura",
       email: "ju.moura@conectas.com.br",
@@ -61,48 +47,6 @@ function seedDB() {
       ver_impactometro: true,
       ver_pax_consultor: true,
       ver_capacidade: true,
-      carga_horas_mes: 176,
-    },
-    {
-      id: "u-angelica",
-      nome: "Angélica",
-      email: "angelica@conectas.com.br",
-      papel: "gestora",
-      fin: "ver",
-      ativo: true,
-      acesso_projetos: "todos",
-      ver_geral: true,
-      ver_impactometro: true,
-      ver_pax_consultor: false,
-      ver_capacidade: true,
-      carga_horas_mes: 176,
-    },
-    {
-      id: "u-marcelle",
-      nome: "Marcelle",
-      email: "marcelle@conectas.com.br",
-      papel: "gestora",
-      fin: "ver",
-      ativo: true,
-      acesso_projetos: "todos",
-      ver_geral: true,
-      ver_impactometro: true,
-      ver_pax_consultor: false,
-      ver_capacidade: true,
-      carga_horas_mes: 176,
-    },
-    {
-      id: "u-rosangela",
-      nome: "Rosângela",
-      email: "rosangela@conectas.com.br",
-      papel: "instrucional",
-      fin: "nenhum",
-      ativo: true,
-      acesso_projetos: "todos",
-      ver_geral: true,
-      ver_impactometro: true,
-      ver_pax_consultor: false,
-      ver_capacidade: false,
       carga_horas_mes: 176,
     },
   ];
@@ -211,8 +155,21 @@ function getDB(): Record<string, any[]> {
         }
       }
       if (Array.isArray(parsed.perfis)) {
+        const emailsExemplosRemover = new Set([
+          "carla.sanara@conectas.com.br",
+          "angelica@conectas.com.br",
+          "marcelle@conectas.com.br",
+          "rosangela@conectas.com.br",
+          "ju@conectas.com.br",
+        ]);
+        const idsExemplosRemover = new Set(["u-carla", "u-angelica", "u-marcelle", "u-rosangela"]);
+        const antes = parsed.perfis.length;
+        parsed.perfis = parsed.perfis.filter(
+          (p: any) => !emailsExemplosRemover.has(String(p.email || "").toLowerCase()) && !idsExemplosRemover.has(String(p.id || ""))
+        );
+        if (parsed.perfis.length !== antes) changed = true;
+
         const adminsFixos = [
-          { id: "u-carla", nome: "Carla Sanara", email: "carla.sanara@conectas.com.br", senha: "" },
           { id: "u-ju", nome: "Ju Moura", email: "ju.moura@conectas.com.br", senha: "2026Coragem" },
           { id: "u-financeiro", nome: "Financeiro Conectas", email: "financeiro@conectas.com.br", senha: "2026Coragem" },
         ];
@@ -707,13 +664,17 @@ export const supabase: any = {
         }
       } catch {}
 
-      // Fallback local: permite entrar imediatamente (o 1º usuário / carla.sanara vira Admin com financeiro completo)
+      // Fallback local: permite entrar imediatamente
       const db = getDB();
-      const adminsEmails = ["carla.sanara@conectas.com.br", "ju.moura@conectas.com.br", "financeiro@conectas.com.br"];
+      const adminsEmails = ["ju.moura@conectas.com.br", "financeiro@conectas.com.br"];
       const ehAdminFixo = adminsEmails.includes(cleanEmail);
       let perfil = db.perfis.find((p) => p.email.toLowerCase() === cleanEmail);
       if (perfil && perfil.senha && password !== perfil.senha) {
         return { data: { user: null, session: null }, error: { message: "Senha incorreta." } };
+      }
+      if (perfil && !perfil.senha && password) {
+        perfil.senha = password;
+        saveDB(db);
       }
       if (!perfil) {
         const nomeBase = cleanEmail.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
@@ -721,6 +682,7 @@ export const supabase: any = {
           id: uuid(),
           nome: nomeBase || "Usuária Conectas",
           email: cleanEmail,
+          senha: password || "",
           papel: ehAdminFixo ? "admin" : "gestora",
           fin: ehAdminFixo ? "validar" : "nenhum",
           ativo: true,
