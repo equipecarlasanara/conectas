@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "./Auth";
 import { PAPEL, FIN } from "@/lib/format";
+import { processarAlertasOutlook } from "@/lib/supabase";
 
 const ICONS: Record<string, React.ReactNode> = {
   "/": (
@@ -89,6 +90,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     const t = saved || "light";
     setTema(t);
     document.documentElement.setAttribute("data-theme", t);
+    setTimeout(() => { processarAlertasOutlook(true).catch(() => {}); }, 1500);
   }, []);
 
   function alternarTema() {

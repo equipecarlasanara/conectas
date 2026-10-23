@@ -123,7 +123,256 @@ function seedDB() {
     contatos: [],
     calendario_tokens: [],
     audit_log: [],
+    email_fila: [],
+    notificacoes: [],
+    lembretes_enviados: [],
   };
+}
+
+const OUTLOOK_CFG_KEY = "conectas_outlook_config_v1";
+
+export function getOutlookConfig() {
+  if (typeof window === "undefined") return { tenantId: "", clientId: "", clientSecret: "", sender: "financeiro@conectas.com.br", ativo: true };
+  try {
+    const raw = window.localStorage.getItem(OUTLOOK_CFG_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { tenantId: "", clientId: "", clientSecret: "", sender: "financeiro@conectas.com.br", ativo: true };
+}
+
+export function saveOutlookConfig(cfg: any) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(OUTLOOK_CFG_KEY, JSON.stringify(cfg));
+  } catch {}
+}
+
+function dataBRCurta(iso?: string | null) {
+  if (!iso) return "sem prazo definido";
+  const p = iso.slice(0, 10).split("-");
+  return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : iso;
+}
+
+function enfileirarAlertaAtribuicao(db: Record<string, any[]>, table: string, row: any) {
+  if (!db.email_fila) db.email_fila = [];
+  if (!db.notificacoes) db.notificacoes = [];
+  const proj = (db.projetos || []).find((p) => p.id === row.projeto_id);
+  const pnome = proj?.nome || "Projeto Conectas";
+  const prazoTxt = row.data_prevista
+    ? `prazo ${dataBRCurta(row.data_prevista)}${row.hora_prevista ? " às " + String(row.hora_prevista).slice(0, 5) : ""}`
+    : "sem prazo definido";
+  const rotulo = table === "entregaveis" ? "entrega" : "atividade";
+
+  if (row.responsavel_id) {
+    const dest = (db.perfis || []).find((u) => u.id === row.responsavel_id && u.ativo !== false);
+    if (dest?.email) {
+      const assunto = `Conectas: nova ${rotulo} "${row.nome}"`;
+      const corpo = `Olá, ${dest.nome}. Você recebeu a ${rotulo} "${row.nome}" no projeto "${pnome}" (${prazoTxt}).`;
+      db.notificacoes.unshift({
+        id: uuid(),
+        usuario_id: dest.id,
+        texto: `Nova ${rotulo}: "${row.nome}" (${pnome}), ${prazoTxt}.`,
+        link: `/projetos/${row.projeto_id}`,
+        lida: false,
+        criado_em: new Date().toISOString(),
+      });
+      db.email_fila.unshift({
+        id: uuid(),
+        usuario_id: dest.id,
+        para: dest.email,
+        assunto,
+        corpo,
+        tipo: "criacao",
+        ref_tabela: table,
+        ref_id: row.id,
+        projeto_id: row.projeto_id,
+        criado_em: new Date().toISOString(),
+        enviado_em: null,
+        erro: null,
+      });
+    }
+  }
+
+  if (row.contato_id) {
+    const ct = (db.contatos || []).find((c) => c.id === row.contato_id);
+    if (ct?.email) {
+      db.email_fila.unshift({
+        id: uuid(),
+        usuario_id: null,
+        para: ct.email,
+        assunto: `Conectas: ${row.nome} (${pnome})`,
+        corpo: `Olá, ${ct.nome}. Há uma ${rotulo} sob sua responsabilidade no projeto "${pnome}": "${row.nome}" (${prazoTxt}).`,
+        tipo: "criacao",
+        ref_tabela: table,
+        ref_id: row.id,
+        projeto_id: row.projeto_id,
+        criado_em: new Date().toISOString(),
+        enviado_em: null,
+        erro: null,
+      });
+    }
+  }
+}
+
+export async function processarAlertasOutlook(gerarLembretesPrazo = true) {
+  const db = getDB();
+  if (!db.email_fila) db.email_fila = [];
+  if (!db.lembretes_enviados) db.lembretes_enviados = [];
+  if (!db.notificacoes) db.notificacoes = [];
+
+  const hoje = hojeISO();
+  const difDias = (d: string) => Math.round((new Date(d + "T00:00:00Z").getTime() - new Date(hoje + "T00:00:00Z").getTime()) / 864e5);
+  const tipoLembrete = (d: number): string | null => {
+    if (d <= -1) {
+      const sem = Math.floor((-d - 1) / 7);
+      return sem === 0 ? "atraso" : `atraso_s${sem}`;
+    }
+    if (d === 0) return "vence_hoje";
+    if (d <= 2) return "lembrete_2d";
+    if (d <= 7) return "lembrete_7d";
+    if (d <= 15) return "lembrete_15d";
+    return null;
+  };
+
+  let lembretesGerados = 0;
+  if (gerarLembretesPrazo) {
+    const itens: { tab: string; t: any }[] = [
+      ...(db.atividades || [])
+        .filter((a) => a.data_prevista && a.status !== "concluido" && a.status !== "cancelado")
+        .map((t) => ({ tab: "atividades", t })),
+      ...(db.entregaveis || [])
+        .filter(
+          (e) =>
+            e.data_prevista &&
+            e.responsavel_id &&
+            e.status !== "concluido" &&
+            e.status !== "cancelado" &&
+            !(db.atividades || []).some((a) => a.entregavel_id === e.id)
+        )
+        .map((t) => ({ tab: "entregaveis", t })),
+    ];
+
+    for (const { tab, t } of itens) {
+      const d = difDias(t.data_prevista);
+      const tipo = tipoLembrete(d);
+      if (!tipo) continue;
+      const chave = `${tab}:${t.id}:${tipo}:${t.data_prevista}`;
+      if (db.lembretes_enviados.some((l) => l.chave === chave)) continue;
+
+      const proj = (db.projetos || []).find((p) => p.id === t.projeto_id);
+      const pn = proj?.nome || "Projeto Conectas";
+      const quando = `${dataBRCurta(t.data_prevista)}${t.hora_prevista ? " às " + String(t.hora_prevista).slice(0, 5) : ""}`;
+      const rot = tab === "entregaveis" ? "entrega" : "atividade";
+      const txt =
+        d < 0
+          ? `A ${rot} "${t.nome}" (${pn}) está atrasada: o prazo era ${quando}.`
+          : d === 0
+          ? `A ${rot} "${t.nome}" (${pn}) vence hoje (${quando}).`
+          : `A ${rot} "${t.nome}" (${pn}) vence em ${d} dia${d === 1 ? "" : "s"} (${quando}).`;
+      const assunto = `Conectas: ${d < 0 ? "atrasada" : d === 0 ? "vence hoje" : `prazo em ${d}d`} - ${t.nome}`;
+
+      const dests: { id?: string; nome: string; email: string; ehGP?: boolean }[] = [];
+      if (t.responsavel_id) {
+        const r = (db.perfis || []).find((u) => u.id === t.responsavel_id && u.ativo !== false);
+        if (r?.email) dests.push({ id: r.id, nome: r.nome, email: r.email });
+      }
+      if (t.contato_id) {
+        const c = (db.contatos || []).find((ct) => ct.id === t.contato_id);
+        if (c?.email) dests.push({ nome: c.nome, email: c.email });
+      }
+      if (d < 0 && proj?.responsavel_id) {
+        const gp = (db.perfis || []).find((u) => u.id === proj.responsavel_id && u.ativo !== false);
+        if (gp?.email && !dests.some((x) => x.email.toLowerCase() === gp.email.toLowerCase())) {
+          dests.push({ id: gp.id, nome: gp.nome, email: gp.email, ehGP: true });
+        }
+      }
+
+      for (const x of dests) {
+        const corpo = `Olá, ${x.nome}. ${txt}${x.ehGP ? " Você está recebendo este aviso por ser GP do projeto." : ""}`;
+        if (x.id) {
+          db.notificacoes.unshift({
+            id: uuid(),
+            usuario_id: x.id,
+            texto: txt,
+            link: `/projetos/${t.projeto_id}`,
+            lida: false,
+            criado_em: new Date().toISOString(),
+          });
+        }
+        db.email_fila.unshift({
+          id: uuid(),
+          usuario_id: x.id || null,
+          para: x.email,
+          assunto,
+          corpo,
+          tipo,
+          ref_tabela: tab,
+          ref_id: t.id,
+          projeto_id: t.projeto_id,
+          criado_em: new Date().toISOString(),
+          enviado_em: null,
+          erro: null,
+        });
+        lembretesGerados++;
+      }
+      db.lembretes_enviados.push({ id: uuid(), chave, criado_em: new Date().toISOString() });
+    }
+    saveDB(db);
+  }
+
+  const cfg = getOutlookConfig();
+  if (!cfg?.tenantId || !cfg?.clientId || !cfg?.clientSecret || !cfg?.sender) {
+    return { ok: true, lembretesGerados, enviados: 0, falhas: 0, aviso: "Credenciais do Outlook ainda não preenchidas em Administração → Alertas e Outlook." };
+  }
+
+  const pendentes = (db.email_fila || []).filter((m) => !m.enviado_em);
+  let enviados = 0;
+  let falhas = 0;
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://conectas.pages.dev";
+
+  for (const m of pendentes) {
+    try {
+      const refLista = m.ref_tabela ? db[m.ref_tabela] || [] : [];
+      const item = refLista.find((x: any) => x.id === m.ref_id);
+      const url = m.projeto_id ? `${origin}/projetos/${m.projeto_id}` : origin;
+      const r = await fetch("/api/outlook/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          config: cfg,
+          para: m.para,
+          cc: m.cc || undefined,
+          assunto: m.assunto,
+          texto: m.corpo + `\n\nAbrir no sistema: ${url}`,
+          evento: item?.data_prevista
+            ? {
+                id: item.id,
+                titulo: item.nome,
+                data: item.data_prevista,
+                hora: item.hora_prevista || null,
+                duracaoMin: item.duracao_min || 60,
+                url,
+                criarNaAgenda: !!m.usuario_id,
+              }
+            : null,
+        }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) {
+        m.erro = j.erro || `Erro HTTP ${r.status}`;
+        falhas++;
+      } else {
+        m.enviado_em = new Date().toISOString();
+        m.erro = j.agendaAviso || null;
+        enviados++;
+      }
+    } catch (e: any) {
+      m.erro = String(e?.message || e);
+      falhas++;
+    }
+  }
+  saveDB(db);
+  return { ok: true, lembretesGerados, enviados, falhas };
 }
 
 function getDB(): Record<string, any[]> {
@@ -418,6 +667,7 @@ class LocalQueryBuilder {
       }
       if (this.limitCount != null) resultRows = resultRows.slice(0, this.limitCount);
     } else if (this.op === "insert") {
+      let dispararOutlook = false;
       const inserted = this.payload.map((item: any) => {
         const novo: any = {
           id: item.id || uuid(),
@@ -428,15 +678,35 @@ class LocalQueryBuilder {
         if (this.table === "entregaveis" && !novo.status) novo.status = "nao_iniciado";
         if (this.table === "calendario_tokens" && !novo.token) novo.token = uuid().replace(/-/g, "");
         list.push(novo);
+        if ((this.table === "atividades" || this.table === "entregaveis") && (novo.responsavel_id || novo.contato_id)) {
+          enfileirarAlertaAtribuicao(db, this.table, novo);
+          dispararOutlook = true;
+        }
         return enrichRow(this.table, novo, db);
       });
       saveDB(db);
+      if (dispararOutlook && typeof window !== "undefined") {
+        setTimeout(() => { processarAlertasOutlook(false).catch(() => {}); }, 100);
+      }
       resultRows = inserted;
     } else if (this.op === "update") {
       const updated: any[] = [];
+      let dispararOutlook = false;
       list.forEach((r, idx) => {
         if (match(r)) {
+          const antesResp = r.responsavel_id;
+          const antesContato = r.contato_id;
+          const antesData = r.data_prevista;
           list[idx] = { ...r, ...this.payload };
+          if (
+            (this.table === "atividades" || this.table === "entregaveis") &&
+            ((list[idx].responsavel_id && list[idx].responsavel_id !== antesResp) ||
+              (list[idx].contato_id && list[idx].contato_id !== antesContato) ||
+              (list[idx].responsavel_id && list[idx].data_prevista && list[idx].data_prevista !== antesData))
+          ) {
+            enfileirarAlertaAtribuicao(db, this.table, list[idx]);
+            dispararOutlook = true;
+          }
           if (this.table === "atividades" && this.payload.status === "concluido" && list[idx].gera_receita && Number(list[idx].valor) > 0) {
             const ja = db.eventos_receita.find((ev) => ev.atividade_id === list[idx].id);
             if (!ja) {
@@ -456,6 +726,9 @@ class LocalQueryBuilder {
         }
       });
       saveDB(db);
+      if (dispararOutlook && typeof window !== "undefined") {
+        setTimeout(() => { processarAlertasOutlook(false).catch(() => {}); }, 100);
+      }
       resultRows = updated;
     } else if (this.op === "upsert") {
       const conflictKey = this.upsertOpts?.onConflict || (this.table === "projeto_financeiro" ? "projeto_id" : "id");
@@ -508,7 +781,9 @@ async function handleLocalRpc(fn: string, args: any = {}) {
     return { data: true, error: null };
   }
   if (fn === "historico_alertas") {
-    return { data: [], error: null };
+    const pid = args.p_projeto;
+    const lista = (db.email_fila || []).filter((f: any) => f.projeto_id === pid);
+    return { data: lista, error: null };
   }
   if (fn === "historico_projeto") {
     return { data: db.audit_log || [], error: null };

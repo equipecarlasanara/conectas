@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase";
 export default function Page() { return <Shell><Clientes /></Shell>; }
 function Clientes() {
   const { perfil } = useAuth();
-  const pode = perfil!.papel === "admin" || perfil!.papel === "gestora";
+  const pode = perfil!.papel === "admin" || perfil!.papel === "gestora" || perfil!.papel === "lider_tecnico";
   const [lista, setLista] = useState<any[]>([]); const [novo, setNovo] = useState(false);
   const [nome, setNome] = useState(""); const [doc, setDoc] = useState(""); const [obs, setObs] = useState(""); const [erro, setErro] = useState("");
   const carregar = async () => { const { data } = await supabase.from("clientes").select("*, projetos(id)").order("nome"); setLista(data || []); };

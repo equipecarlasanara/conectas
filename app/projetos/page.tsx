@@ -14,7 +14,7 @@ const norm = (s: string) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").t
 
 function Projetos() {
   const { perfil } = useAuth();
-  const pode = perfil!.papel === "admin" || perfil!.papel === "gestora";
+  const pode = perfil!.papel === "admin" || perfil!.papel === "gestora" || perfil!.papel === "lider_tecnico";
   const finEd = perfil!.fin === "editar" || perfil!.fin === "validar";
   const [lista, setLista] = useState<any[]>([]); const [clientes, setClientes] = useState<any[]>([]); const [pessoas, setPessoas] = useState<any[]>([]);
   const [tiposProj, setTiposProj] = useState<string[]>(TIPOS_PROJETO);

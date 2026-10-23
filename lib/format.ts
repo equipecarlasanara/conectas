@@ -12,7 +12,7 @@ export const TIPOS_PROJETO = ["Palestra", "Workshop", "Programa", "Projeto", "Co
 export const FASE: Record<string,string> = { a_iniciar: "A iniciar", execucao: "Execução", entrega: "Entrega", finalizado: "Finalizado" };
 export const PRIORIDADE: Record<string,string> = { alta:"Alta", media:"Média", baixa:"Baixa" };
 export const RESP: Record<string,string> = { conectas:"Conectas", cliente:"Cliente", terceiro:"Terceiro" };
-export const PAPEL: Record<string,string> = { admin:"Administração", gestora:"GP (gestão de projetos)", instrucional:"Desenvolvimento instrucional", comercial:"Comercial", financeiro:"Financeiro", marketing:"Marketing", consultor:"Consultor" };
+export const PAPEL: Record<string,string> = { admin:"Administração", gestora:"GP (gestão de projetos)", lider_tecnico:"Líder técnico", instrucional:"Desenvolvimento instrucional", comercial:"Comercial", financeiro:"Financeiro", marketing:"Marketing", consultor:"Consultor" };
 export const FIN: Record<string,string> = { nenhum:"Sem acesso", ver:"Visualizar", editar:"Editar", validar:"Editar e validar" };
 
 export const brl = (n:number) => (Number(n)||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});

@@ -35,7 +35,7 @@ function Consultores() {
     const porProj: Record<string, { n: string; h: number }> = {}; mine.forEach(a => { const o = porProj[a.projeto_id] = porProj[a.projeto_id] || { n: a.projetos?.nome || "", h: 0 }; o.h += Number(a.horas_previstas || 0); });
     const ativos = ps.filter(j => !["concluido", "cancelado"].includes(j.situacao));
     return { p, prev, feito, cap, uso, sem, livre: cap - prev, porProj, gp: ativos.filter(j => j.responsavel_id === p.id).length, lt: ativos.filter(j => j.apoio_id === p.id).length, n: mine.length };
-  }).filter(l => l.n > 0 || l.gp > 0 || l.lt > 0 || l.p.papel === "consultor");
+  }).filter(l => l.n > 0 || l.gp > 0 || l.lt > 0 || l.p.papel === "consultor" || l.p.papel === "lider_tecnico");
   const farol = (u: number): [string, string] => u > 100 ? ["Acima da capacidade", "var(--late)"] : u >= 80 ? ["Atenção", "var(--s2)"] : ["Com folga", "var(--s3)"];
   return (<>
     <header className="cx-head"><h1>Consultores: horas e capacidade</h1><label className="f">Mês<input type="month" value={mes} onChange={e => setMes(e.target.value)} /></label></header>
