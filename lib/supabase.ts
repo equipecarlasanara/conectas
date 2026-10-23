@@ -4,7 +4,7 @@ const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "http://localhost";
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "missing";
 const realSupabase = createClient(url, anon);
 
-const STORAGE_KEY = "conectas_local_db_v1";
+const STORAGE_KEY = "conectas_local_db_v2";
 const SESSION_KEY = "conectas_local_session_v1";
 const authListeners = new Set<(event: string, session: any) => void>();
 
@@ -142,424 +142,27 @@ function seedDB() {
     })),
   ];
 
-  const clientes = [
-    { id: "cli-1", nome: "Empresa Exemplo A", documento: "12.345.678/0001-90", observacoes: "Conta estratégica — DHO e Liderança" },
-    { id: "cli-2", nome: "Empresa Exemplo B", documento: "98.765.432/0001-10", observacoes: "Trilha executiva anual" },
-    { id: "cli-3", nome: "Empresa Exemplo C", documento: "45.123.890/0001-55", observacoes: "Diagnóstico e cultura organizacional" },
-  ];
-
-  const projetos = [
-    {
-      id: "proj-1",
-      codigo: "CON-2026-001",
-      cliente_id: "cli-1",
-      nome: "Programa de Liderança",
-      descricao: "Programa de desenvolvimento de lideranças para gestores da Empresa Exemplo A.",
-      objetivo: "Desenvolver competências de liderança colaborativa e gestão de equipes.",
-      responsavel_id: "u-angelica",
-      apoio_id: "u-marcelle",
-      inicio_previsto: "2026-09-01",
-      fim_previsto: "2026-12-30",
-      situacao: "em_execucao",
-      fase: "execucao",
-      tipo_projeto: "Programa",
-      subtipo: "PDL",
-      modalidade: "projeto",
-      prioridade: "alta",
-      escopo_vigente_id: "esc-1",
-      resp_conectas: "Conteúdo, facilitação, relatórios.",
-      resp_cliente: "Local, convites e lista de participantes.",
-      logistica_por: "cliente",
-      logistica_obs: "Cliente providencia passagens e sala de treinamento.",
-      criado_em: "2026-09-01T10:00:00Z",
-    },
-    {
-      id: "proj-2",
-      codigo: "CON-2026-002",
-      cliente_id: "cli-2",
-      nome: "Trilha de Mentorias",
-      descricao: "Acompanhamento individual e em grupo de líderes sênior.",
-      objetivo: "Apoiar transição de carreira executiva.",
-      responsavel_id: "u-marcelle",
-      apoio_id: "u-angelica",
-      inicio_previsto: "2026-08-15",
-      fim_previsto: "2026-11-20",
-      situacao: "em_execucao",
-      fase: "execucao",
-      tipo_projeto: "Consultoria",
-      subtipo: "Coaching",
-      modalidade: "projeto",
-      prioridade: "media",
-      escopo_vigente_id: "esc-2",
-      criado_em: "2026-08-15T10:00:00Z",
-    },
-    {
-      id: "proj-3",
-      codigo: "CON-2026-003",
-      cliente_id: "cli-3",
-      nome: "Diagnóstico Organizacional",
-      descricao: "Mapeamento de clima, processos de RH e entrevistas com liderança.",
-      objetivo: "Construir plano diretor de DHO 2027.",
-      responsavel_id: "u-angelica",
-      apoio_id: null,
-      inicio_previsto: "2026-11-01",
-      fim_previsto: "2027-02-28",
-      situacao: "planejamento",
-      fase: "a_iniciar",
-      tipo_projeto: "Projeto",
-      subtipo: "Diagnóstico",
-      modalidade: "full_service",
-      prioridade: "media",
-      escopo_vigente_id: "esc-3",
-      criado_em: "2026-10-01T10:00:00Z",
-    },
-  ];
-
-  const escopos = [
-    { id: "esc-1", projeto_id: "proj-1", versao: 1, tipo: "contratado", motivo: "Escopo original da venda" },
-    { id: "esc-2", projeto_id: "proj-2", versao: 1, tipo: "contratado", motivo: "Escopo original da venda" },
-    { id: "esc-3", projeto_id: "proj-3", versao: 1, tipo: "contratado", motivo: "Escopo original da venda" },
-  ];
-
-  const macroNomes = ["Contextualização", "Conteúdo", "Conexão", "Consolidação", "Concretização"];
-  const macroetapas: any[] = [];
-  escopos.forEach((esc) => {
-    macroNomes.forEach((nome, idx) => {
-      macroetapas.push({
-        id: `mac-${esc.projeto_id}-${idx + 1}`,
-        escopo_id: esc.id,
-        projeto_id: esc.projeto_id,
-        nome,
-        ordem: idx + 1,
-      });
-    });
-  });
-
-  const entregaveis = [
-    {
-      id: "ent-1",
-      macroetapa_id: "mac-proj-1-1",
-      projeto_id: "proj-1",
-      escopo_id: "esc-1",
-      tipo_id: "tipo-2",
-      nome: "Entrevistas com lideranças",
-      quantidade: 4,
-      data_prevista: "2026-09-25",
-      data_realizada: "2026-09-25",
-      hora_prevista: "10:00",
-      status: "concluido",
-      responsavel_id: "u-angelica",
-      gera_receita: true,
-      pax: 48,
-      pax_previsto: 48,
-      uf: "SP",
-      cidade: "São Paulo",
-    },
-    {
-      id: "ent-2",
-      macroetapa_id: "mac-proj-1-1",
-      projeto_id: "proj-1",
-      escopo_id: "esc-1",
-      tipo_id: "tipo-3",
-      nome: "Focus group",
-      quantidade: 1,
-      data_prevista: "2026-10-09",
-      data_realizada: null,
-      hora_prevista: "14:00",
-      status: "aguardando_cliente",
-      responsavel_id: "u-marcelle",
-      gera_receita: true,
-      pax: null,
-      pax_previsto: 25,
-      uf: "SP",
-      cidade: "São Paulo",
-    },
-    {
-      id: "ent-3",
-      macroetapa_id: "mac-proj-1-2",
-      projeto_id: "proj-1",
-      escopo_id: "esc-1",
-      tipo_id: "tipo-6",
-      nome: "Workshop 1 — Liderança Colaborativa",
-      quantidade: 1,
-      data_prevista: "2026-10-28",
-      data_realizada: "2026-10-10",
-      hora_prevista: "14:00",
-      status: "concluido",
-      responsavel_id: "u-angelica",
-      gera_receita: true,
-      pax: 120,
-      pax_previsto: 120,
-      uf: "SP",
-      cidade: "São Paulo",
-    },
-    {
-      id: "ent-4",
-      macroetapa_id: "mac-proj-1-3",
-      projeto_id: "proj-1",
-      escopo_id: "esc-1",
-      tipo_id: "tipo-7",
-      nome: "Encontros de liderança",
-      quantidade: 4,
-      data_prevista: "2026-11-20",
-      data_realizada: null,
-      hora_prevista: "09:00",
-      status: "em_andamento",
-      responsavel_id: "u-angelica",
-      gera_receita: true,
-      pax: null,
-      pax_previsto: 80,
-      uf: "SP",
-      cidade: "Campinas",
-    },
-    {
-      id: "ent-5",
-      macroetapa_id: "mac-proj-2-3",
-      projeto_id: "proj-2",
-      escopo_id: "esc-2",
-      tipo_id: "tipo-8",
-      nome: "Encontro 1 — Mentoria Executiva",
-      quantidade: 1,
-      data_prevista: "2026-09-25",
-      data_realizada: "2026-09-25",
-      hora_prevista: "15:00",
-      status: "concluido",
-      responsavel_id: "u-marcelle",
-      gera_receita: true,
-      pax: 80,
-      pax_previsto: 80,
-      uf: "RJ",
-      cidade: "Rio de Janeiro",
-    },
-  ];
-
-  const alocacoes_valor = [
-    { id: "aloc-1", entregavel_id: "ent-1", valor: 6000 },
-    { id: "aloc-2", entregavel_id: "ent-2", valor: 4000 },
-    { id: "aloc-3", entregavel_id: "ent-3", valor: 16000 },
-    { id: "aloc-4", entregavel_id: "ent-4", valor: 18000 },
-    { id: "aloc-5", entregavel_id: "ent-5", valor: 22000 },
-  ];
-
-  const projeto_financeiro = [
-    { projeto_id: "proj-1", valor_contratado: 44000, valor_liquido: 41300 },
-    { projeto_id: "proj-2", valor_contratado: 46000, valor_liquido: 43200 },
-    { projeto_id: "proj-3", valor_contratado: 30000, valor_liquido: 28200 },
-  ];
-
-  const atividades = [
-    {
-      id: "ativ-1",
-      entregavel_id: "ent-1",
-      projeto_id: "proj-1",
-      nome: "Agendar entrevistas",
-      responsavel_id: "u-angelica",
-      responsabilidade: "conectas",
-      data_prevista: "2026-09-15",
-      data_realizada: "2026-09-15",
-      hora_prevista: "10:00",
-      status: "concluido",
-      prioridade: "media",
-      local: "Online",
-      horas_previstas: 12,
-      participantes: "Angélica, Marcelle",
-      gera_receita: true,
-      valor: 6000,
-      logistica: false,
-    },
-    {
-      id: "ativ-2",
-      entregavel_id: "ent-2",
-      projeto_id: "proj-1",
-      nome: "Confirmar participantes",
-      responsavel_id: "u-marcelle",
-      responsabilidade: "cliente",
-      data_prevista: "2026-10-05",
-      data_realizada: null,
-      hora_prevista: "14:00",
-      status: "aguardando_cliente",
-      prioridade: "alta",
-      local: "Cliente",
-      horas_previstas: 8,
-      pendencia: "Cliente ainda não enviou a lista",
-      gera_receita: true,
-      valor: 4000,
-      logistica: true,
-    },
-    {
-      id: "ativ-3",
-      entregavel_id: "ent-3",
-      projeto_id: "proj-1",
-      nome: "Preparar roteiro do workshop",
-      responsavel_id: "u-marcelle",
-      responsabilidade: "conectas",
-      data_prevista: "2026-10-14",
-      data_realizada: null,
-      hora_prevista: "09:00",
-      status: "nao_iniciado",
-      prioridade: "media",
-      local: "Conectas",
-      horas_previstas: 16,
-      gera_receita: false,
-      valor: null,
-      logistica: false,
-    },
-    {
-      id: "ativ-4",
-      entregavel_id: "ent-3",
-      projeto_id: "proj-1",
-      nome: "Desenvolver material instrucional",
-      responsavel_id: "u-rosangela",
-      responsabilidade: "conectas",
-      data_prevista: "2026-10-24",
-      data_realizada: null,
-      hora_prevista: "11:00",
-      status: "em_andamento",
-      prioridade: "media",
-      local: "Conectas",
-      horas_previstas: 24,
-      gera_receita: false,
-      valor: null,
-      logistica: false,
-    },
-    {
-      id: "ativ-5",
-      entregavel_id: "ent-4",
-      projeto_id: "proj-1",
-      nome: "Reservar sala e logística",
-      responsavel_id: "u-angelica",
-      responsabilidade: "conectas",
-      data_prevista: "2026-10-28",
-      data_realizada: null,
-      hora_prevista: "16:00",
-      status: "nao_iniciado",
-      prioridade: "media",
-      local: "Cliente",
-      horas_previstas: 6,
-      gera_receita: false,
-      valor: null,
-      logistica: true,
-    },
-  ];
-
-  const eventos_receita = [
-    {
-      id: "ev-1",
-      projeto_id: "proj-1",
-      entregavel_id: "ent-1",
-      valor: 22000,
-      competencia: "2026-09-01",
-      status: "reconhecida",
-      validado_em: "2026-09-30",
-      criado_em: "2026-09-25T14:00:00Z",
-    },
-    {
-      id: "ev-2",
-      projeto_id: "proj-2",
-      entregavel_id: "ent-5",
-      valor: 22000,
-      competencia: "2026-10-01",
-      status: "pendente",
-      validado_em: null,
-      criado_em: "2026-10-10T15:00:00Z",
-    },
-  ];
-
-  const despesas = [
-    {
-      id: "desp-1",
-      projeto_id: "proj-1",
-      categoria: "Passagem",
-      descricao: "Passagem aérea SP-Recife",
-      fornecedor: "Companhia aérea",
-      data: "2026-10-12",
-      valor_orcado: 2000,
-      valor_gasto: 1500,
-      valor_reembolsado: 0,
-      criado_por: "u-angelica",
-    },
-    {
-      id: "desp-2",
-      projeto_id: "proj-1",
-      categoria: "Impressão",
-      descricao: "Apostilas do workshop",
-      fornecedor: "Gráfica Exemplo",
-      data: "2026-10-14",
-      valor_orcado: 1000,
-      valor_gasto: 850,
-      valor_reembolsado: 0,
-      criado_por: "u-angelica",
-    },
-    {
-      id: "desp-3",
-      projeto_id: "proj-1",
-      categoria: "Transporte",
-      descricao: "Uber até o cliente",
-      fornecedor: null,
-      data: "2026-10-15",
-      valor_orcado: null,
-      valor_gasto: 300,
-      valor_reembolsado: 300,
-      criado_por: "u-marcelle",
-    },
-  ];
-
-  const nps_respostas = [
-    { id: "nps-1", projeto_id: "proj-1", nota: 10, data: "2026-10-10", consultor_id: "u-angelica", respondente: "Gestora RH", observacao: "Excelente condução" },
-    { id: "nps-2", projeto_id: "proj-1", nota: 9, data: "2026-10-10", consultor_id: "u-angelica", respondente: "Gerente Industrial", observacao: "Muito prático" },
-    { id: "nps-3", projeto_id: "proj-1", nota: 8, data: "2026-10-10", consultor_id: "u-marcelle", respondente: "Diretor", observacao: "Bom conteúdo" },
-    { id: "nps-4", projeto_id: "proj-2", nota: 10, data: "2026-09-28", consultor_id: "u-marcelle", respondente: "VP Pessoas", observacao: "Transformador" },
-  ];
-
-  const avaliacoes_reacao = [
-    {
-      id: "reac-1",
-      projeto_id: "proj-1",
-      consultor_id: "u-angelica",
-      origem: "cliente",
-      nota: 9.2,
-      escala_max: 10,
-      respostas: 22,
-      data: "2026-10-10",
-      observacao: "Turma 1",
-    },
-    {
-      id: "reac-2",
-      projeto_id: "proj-2",
-      consultor_id: "u-marcelle",
-      origem: "conectas",
-      nota: 4.7,
-      escala_max: 5,
-      respostas: 18,
-      data: "2026-10-12",
-      observacao: "Encontro de mentoria",
-    },
-  ];
-
   return {
     perfis,
     tipos_entregavel,
     opcoes_sistema,
-    clientes,
-    projetos,
-    escopos,
-    macroetapas,
-    entregaveis,
-    alocacoes_valor,
-    projeto_financeiro,
-    atividades,
-    eventos_receita,
-    despesas,
-    nps_respostas,
-    avaliacoes_reacao,
+    clientes: [],
+    projetos: [],
+    escopos: [],
+    macroetapas: [],
+    entregaveis: [],
+    alocacoes_valor: [],
+    projeto_financeiro: [],
+    atividades: [],
+    eventos_receita: [],
+    despesas: [],
+    nps_respostas: [],
+    avaliacoes_reacao: [],
     substituicoes: [],
     acessos_projeto: [],
     contatos: [],
     calendario_tokens: [],
-    audit_log: [
-      { id: "aud-1", em: "2026-10-16T09:12:00Z", tabela: "entregaveis", acao: "UPDATE", resumo: "Workshop 1", usuario_id: "u-angelica" },
-      { id: "aud-2", em: "2026-10-15T17:40:00Z", tabela: "alocacoes_valor", acao: "UPDATE", resumo: "R$ 44.000,00", usuario_id: "u-carla" },
-    ],
+    audit_log: [],
   };
 }
 
@@ -599,6 +202,24 @@ function getDB(): Record<string, any[]> {
   } catch {}
   const initial = seedDB();
   try {
+    const oldRaw = window.localStorage.getItem("conectas_local_db_v1");
+    if (oldRaw) {
+      const old = JSON.parse(oldRaw);
+      if (Array.isArray(old.perfis) && old.perfis.length) initial.perfis = old.perfis;
+      if (Array.isArray(old.tipos_entregavel) && old.tipos_entregavel.length) {
+        const existentes = new Set(old.tipos_entregavel.map((x: any) => String(x.nome).toLowerCase()));
+        for (const item of initial.tipos_entregavel) {
+          if (!existentes.has(item.nome.toLowerCase())) {
+            old.tipos_entregavel.push(item);
+          }
+        }
+        initial.tipos_entregavel = old.tipos_entregavel;
+      }
+      if (Array.isArray(old.opcoes_sistema) && old.opcoes_sistema.length) {
+        initial.opcoes_sistema = old.opcoes_sistema.filter((x: any) => x.grupo !== "subtipo_projeto");
+      }
+      window.localStorage.removeItem("conectas_local_db_v1");
+    }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
   } catch {}
   return initial;
