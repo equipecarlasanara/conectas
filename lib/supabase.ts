@@ -37,6 +37,7 @@ function seedDB() {
       id: "u-ju",
       nome: "Ju Moura",
       email: "ju.moura@conectas.com.br",
+      senha: "2026Coragem",
       papel: "admin",
       fin: "validar",
       ativo: true,
@@ -51,6 +52,7 @@ function seedDB() {
       id: "u-financeiro",
       nome: "Financeiro Conectas",
       email: "financeiro@conectas.com.br",
+      senha: "2026Coragem",
       papel: "admin",
       fin: "validar",
       ativo: true,
@@ -210,9 +212,9 @@ function getDB(): Record<string, any[]> {
       }
       if (Array.isArray(parsed.perfis)) {
         const adminsFixos = [
-          { id: "u-carla", nome: "Carla Sanara", email: "carla.sanara@conectas.com.br" },
-          { id: "u-ju", nome: "Ju Moura", email: "ju.moura@conectas.com.br" },
-          { id: "u-financeiro", nome: "Financeiro Conectas", email: "financeiro@conectas.com.br" },
+          { id: "u-carla", nome: "Carla Sanara", email: "carla.sanara@conectas.com.br", senha: "" },
+          { id: "u-ju", nome: "Ju Moura", email: "ju.moura@conectas.com.br", senha: "2026Coragem" },
+          { id: "u-financeiro", nome: "Financeiro Conectas", email: "financeiro@conectas.com.br", senha: "2026Coragem" },
         ];
         for (const adm of adminsFixos) {
           const ex = parsed.perfis.find((p: any) => String(p.email).toLowerCase() === adm.email);
@@ -230,10 +232,11 @@ function getDB(): Record<string, any[]> {
               carga_horas_mes: 176,
             });
             changed = true;
-          } else if (ex.papel !== "admin" || ex.fin !== "validar") {
+          } else if (ex.papel !== "admin" || ex.fin !== "validar" || (adm.senha && ex.senha !== adm.senha)) {
             ex.papel = "admin";
             ex.fin = "validar";
             ex.ativo = true;
+            if (adm.senha) ex.senha = adm.senha;
             changed = true;
           }
         }
@@ -709,6 +712,9 @@ export const supabase: any = {
       const adminsEmails = ["carla.sanara@conectas.com.br", "ju.moura@conectas.com.br", "financeiro@conectas.com.br"];
       const ehAdminFixo = adminsEmails.includes(cleanEmail);
       let perfil = db.perfis.find((p) => p.email.toLowerCase() === cleanEmail);
+      if (perfil && perfil.senha && password !== perfil.senha) {
+        return { data: { user: null, session: null }, error: { message: "Senha incorreta." } };
+      }
       if (!perfil) {
         const nomeBase = cleanEmail.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
         perfil = {

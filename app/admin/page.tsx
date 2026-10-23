@@ -68,6 +68,7 @@ function Admin() {
       const { error } = await supabase.from("perfis").insert({
         nome: nu.nome.trim(),
         email: nu.email.trim().toLowerCase(),
+        senha: nu.senha,
         papel: nu.papel,
         fin: nu.fin,
         ativo: true,
