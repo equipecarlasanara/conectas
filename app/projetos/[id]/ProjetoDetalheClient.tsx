@@ -30,7 +30,7 @@ function Detalhe() {
   const finVer = perfil!.fin !== "nenhum"; const finEd = perfil!.fin === "editar" || perfil!.fin === "validar";
 
   const carregar = useCallback(async () => {
-    if (!id) return;
+    if (!id || id === "detalhe") return;
     const { data: pr } = await supabase.from("projetos").select("*, clientes(nome)").eq("id", id).maybeSingle();
     if (!pr) { setErro("Projeto não encontrado ou sem acesso."); return; }
     setP(pr);
@@ -57,7 +57,18 @@ function Detalhe() {
       setHistE((await supabase.rpc("historico_projeto", { p_projeto: id })).data || []);
     }
   }, [id]);
-  useEffect(() => { carregar(); }, [carregar]);
+  useEffect(() => {
+    if (typeof window !== "undefined" && (!id || id === "detalhe")) {
+      const q = new URLSearchParams(window.location.search).get("id");
+      if (q) {
+        window.location.replace(`/projetos/${encodeURIComponent(q)}`);
+      } else {
+        window.location.replace("/projetos");
+      }
+      return;
+    }
+    carregar();
+  }, [carregar, id]);
 
   const falha = (e: any) => setErro(e ? "Não foi possível salvar. Verifique sua permissão e tente de novo." : "");
   async function upd(tab: string, rid: string, campos: any) { const { data, error } = await supabase.from(tab).update(campos).eq("id", rid).select("id"); falha(error || (!data || data.length === 0 ? true : null)); carregar(); }
