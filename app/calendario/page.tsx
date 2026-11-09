@@ -62,7 +62,7 @@ function Calendario() {
     <section className="bx" style={{ marginTop: 14 }}><h2>{dataBR(dia)}</h2>
       {doDia.length === 0 ? <p className="empty">Nada marcado para este dia.</p> : doDia.map(x => <div key={x.id} className="ent" style={{ ["--c" as any]: cor(x.responsavel_id) }}>
         <h3>{x.hora_prevista ? x.hora_prevista.slice(0, 5) + " · " : ""}{x.nome}</h3>
-        <div className="meta">{x.tipo} · <Link href={`/projetos/${x.projeto_id}`}>{proj(x.projeto_id)?.nome}</Link> · {pessoas.find(p => p.id === x.responsavel_id)?.nome || "sem responsável"} · {STATUS[x.status]}</div></div>)}</section>
+        <div className="meta">{x.tipo} · <Link href={`/projetos/detalhe?id=${encodeURIComponent(x.projeto_id)}`}>{proj(x.projeto_id)?.nome}</Link> · {pessoas.find(p => p.id === x.responsavel_id)?.nome || "sem responsável"} · {STATUS[x.status]}</div></div>)}</section>
     <Assinar perfil={perfil} />
   </>);
 }

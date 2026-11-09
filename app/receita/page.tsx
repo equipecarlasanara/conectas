@@ -42,7 +42,7 @@ function Financeiro() {
       <p className="meta">A receita nasce no Cronograma: ao concluir uma atividade com valor, ela aparece aqui para validação. Valor vendido, previsto, reconhecido, faturado e recebido são conceitos separados.</p>
       <section className="bx"><h2>Eventos de receita</h2><div className="tw">{ev.length === 0 ? <p className="empty">Nenhum evento ainda. Ao concluir no Cronograma uma atividade com valor, ela aparece aqui para validação.</p> :
         <table><thead><tr><th>Origem</th><th>Projeto</th><th>Valor</th><th>Competência</th><th>Status</th><th></th></tr></thead><tbody>
-          {ev.map(x => <tr key={x.id}><td>{x.entregaveis?.nome || x.descricao || "Saving"}{x.origem === "saving" && <span className="tag" style={{ marginLeft: 6 }}>Saving</span>}</td><td><Link href={`/projetos/${x.projeto_id}`}>{x.projetos?.nome}</Link><div className="meta">{x.projetos?.clientes?.nome}</div></td>
+          {ev.map(x => <tr key={x.id}><td>{x.entregaveis?.nome || x.descricao || "Saving"}{x.origem === "saving" && <span className="tag" style={{ marginLeft: 6 }}>Saving</span>}</td><td><Link href={`/projetos/detalhe?id=${encodeURIComponent(x.projeto_id)}`}>{x.projetos?.nome}</Link><div className="meta">{x.projetos?.clientes?.nome}</div></td>
             <td>{brl(x.valor)}</td><td>{x.competencia ? mesBR(x.competencia) : "-"}</td>
             <td><span className="tag">{x.status === "pendente" ? "A validar" : x.status === "reconhecida" ? "Reconhecida" : x.status === "estornada" ? "Estornada" : x.status}</span>{x.validado_em && <div className="meta">{dataBR(x.validado_em)}</div>}</td>
             <td>{valida && x.status === "pendente" && <button className="btn sm p" onClick={() => validar(x.id)}>Validar reconhecimento</button>}</td></tr>)}
@@ -66,12 +66,12 @@ function Financeiro() {
             <table><thead><tr><th>Projeto</th><th>GP</th><th>Contratado</th><th>Receita reconhecida</th><th>Gasto líquido</th><th>Saving</th><th>Resultado parcial</th></tr></thead><tbody>
               {proj.filter(p => (!f.proj || p.id === f.proj) && (!f.gp || p.responsavel_id === f.gp)).map((p: any) => { const ds = desp.filter(d => d.projeto_id === p.id); const gasto = ds.reduce((s, d) => s + liq(d), 0); const sav = ds.reduce((s, d) => s + sv(d), 0);
                 const rec = ev.filter(e => e.projeto_id === p.id && e.status === "reconhecida").reduce((s, e) => s + Number(e.valor), 0);
-                return <tr key={p.id}><td><Link href={`/projetos/${p.id}`}>{p.nome}</Link></td><td>{p.resp?.nome || "-"}</td><td>{brl(contrat(p))}</td><td>{brl(rec)}</td><td>{brl(gasto)}</td><td>{brl(sav)}</td><td><b>{brl(rec - gasto)}</b></td></tr>; })}
+                return <tr key={p.id}><td><Link href={`/projetos/detalhe?id=${encodeURIComponent(p.id)}`}>{p.nome}</Link></td><td>{p.resp?.nome || "-"}</td><td>{brl(contrat(p))}</td><td>{brl(rec)}</td><td>{brl(gasto)}</td><td>{brl(sav)}</td><td><b>{brl(rec - gasto)}</b></td></tr>; })}
             </tbody></table>}</div></section>
       </div>
       <section className="bx"><h2>Lançamentos</h2><div className="tw">{dv.length === 0 ? <p className="empty">Nenhum lançamento.</p> :
         <table><thead><tr><th>Data</th><th>Projeto</th><th>Categoria</th><th>Descrição</th><th>Fornecedor</th><th>Orçado</th><th>Gasto líquido</th></tr></thead><tbody>
-          {dv.map(d => <tr key={d.id}><td>{dataBR(d.data)}</td><td><Link href={`/projetos/${d.projeto_id}`}>{d.projetos?.nome}</Link></td><td>{d.categoria}</td><td>{d.descricao}</td><td>{d.fornecedor || "-"}</td><td>{d.valor_orcado != null ? brl(d.valor_orcado) : "-"}</td><td>{brl(liq(d))}</td></tr>)}</tbody></table>}</div></section>
+          {dv.map(d => <tr key={d.id}><td>{dataBR(d.data)}</td><td><Link href={`/projetos/detalhe?id=${encodeURIComponent(d.projeto_id)}`}>{d.projetos?.nome}</Link></td><td>{d.categoria}</td><td>{d.descricao}</td><td>{d.fornecedor || "-"}</td><td>{d.valor_orcado != null ? brl(d.valor_orcado) : "-"}</td><td>{brl(liq(d))}</td></tr>)}</tbody></table>}</div></section>
     </>}
   </>);
 }

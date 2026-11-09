@@ -136,7 +136,7 @@ function Projetos() {
       <div className="grid">{vis.map(p => {
         const es = (p.entregaveis || []).filter((x: any) => x.escopo_id === p.escopo_vigente_id);
         const ok = es.filter((x: any) => x.status === "concluido").length; const at = es.filter((x: any) => atrasado(x.data_prevista, x.status)).length;
-        return <Link key={p.id} href={`/projetos/${p.id}`} className="pj">
+        return <Link key={p.id} href={`/projetos/detalhe?id=${encodeURIComponent(p.id)}`} onClick={() => { try { window.sessionStorage.setItem("conectas_ultimo_projeto", p.id); } catch {} }} className="pj">
           <h2>{p.nome}</h2><div className="meta">{p.clientes?.nome} · {p.codigo}</div>
           <div className="prog"><i style={{ width: (es.length ? ok / es.length * 100 : 0) + "%" }} /></div>
           <div className="meta">{ok} de {es.length} entregas concluídas</div>

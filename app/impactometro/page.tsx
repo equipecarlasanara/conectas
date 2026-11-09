@@ -102,7 +102,7 @@ function Impactometro() {
         meses.map(m => <div className="hb" key={m}><span>{mesBR(m)}</span><span className="t"><i style={{ width: porMes[m] / maxMes * 100 + "%", background: "var(--s1)" }} /></span><b>{porMes[m]}</b></div>)}</section>
       <section className="bx" style={{ gridColumn: "1/-1" }}><h2>Entregas por projeto e data</h2><div className="tw">{feitas.length === 0 ? <p className="empty">Sem entregas no período.</p> :
         <table><thead><tr><th>Data</th><th>Projeto</th><th>Cliente</th><th>Entrega</th><th>PAX</th></tr></thead><tbody>
-          {[...feitas].sort((a, b) => (b.data_realizada || "").localeCompare(a.data_realizada || "")).map(e => <tr key={e.id}><td>{dataBR(e.data_realizada)}</td><td><Link href={`/projetos/${e.projeto_id}`}>{proj(e.projeto_id)?.nome}</Link></td><td>{proj(e.projeto_id)?.clientes?.nome}</td><td>{e.nome}</td><td>{e.pax}</td></tr>)}
+          {[...feitas].sort((a, b) => (b.data_realizada || "").localeCompare(a.data_realizada || "")).map(e => <tr key={e.id}><td>{dataBR(e.data_realizada)}</td><td><Link href={`/projetos/detalhe?id=${encodeURIComponent(e.projeto_id)}`}>{proj(e.projeto_id)?.nome}</Link></td><td>{proj(e.projeto_id)?.clientes?.nome}</td><td>{e.nome}</td><td>{e.pax}</td></tr>)}
         </tbody></table>}</div></section>
     </div>}
 
@@ -122,14 +122,14 @@ function Impactometro() {
     {aba === "nps" && <>
     <section className="bx"><h2>NPS por projeto</h2><div className="tw">{nv.length === 0 ? <p className="empty">Nenhuma resposta no período. Registre respostas na aba NPS de cada projeto.</p> :
       <table><thead><tr><th>Projeto</th><th>Cliente</th><th>Respostas</th><th>NPS</th><th>Classificação</th></tr></thead><tbody>
-        {Object.entries(npsProj).map(([id, notas]) => { const v = nps(notas), zz = zonaNps(v); return <tr key={id}><td><Link href={`/projetos/${id}`}>{proj(id)?.nome}</Link></td><td>{proj(id)?.clientes?.nome}</td><td>{notas.length}</td><td><b>{v}</b></td><td><span className="dot" style={{ background: zz[1] }} />{zz[0]}</td></tr>; })}
+        {Object.entries(npsProj).map(([id, notas]) => { const v = nps(notas), zz = zonaNps(v); return <tr key={id}><td><Link href={`/projetos/detalhe?id=${encodeURIComponent(id)}`}>{proj(id)?.nome}</Link></td><td>{proj(id)?.clientes?.nome}</td><td>{notas.length}</td><td><b>{v}</b></td><td><span className="dot" style={{ background: zz[1] }} />{zz[0]}</td></tr>; })}
       </tbody></table>}</div></section>
     <section className="bx"><h2>Avaliação de reação</h2>
       <p className="meta">Avaliações de reação lançadas nos projetos, inclusive as recebidas em arquivo do cliente. A nota é comparada pela porcentagem da escala de cada avaliação.</p>
       <section className="sum"><div><b>{rv.length}</b><span>Avaliações no período</span></div><div><b>{mediaReac === null ? "-" : pct(mediaReac)}</b><span>Média (% da escala)</span></div><div><b>{rv.filter(x => x.origem === "cliente").length}</b><span>Enviadas pelo cliente</span></div></section>
       <div className="tw">{rv.length === 0 ? <p className="empty">Nenhuma avaliação de reação no período. Registre na aba NPS e avaliação de reação de cada projeto.</p> :
         <table><thead><tr><th>Data</th><th>Projeto</th>{verCons && <th>Consultor</th>}<th>Origem</th><th>Nota</th><th>Respostas</th><th>Arquivo</th></tr></thead><tbody>
-          {[...rv].sort((a, b) => b.data.localeCompare(a.data)).map(x => <tr key={x.id}><td>{dataBR(x.data)}</td><td><Link href={`/projetos/${x.projeto_id}`}>{proj(x.projeto_id)?.nome}</Link></td>{verCons && <td>{x.consultor?.nome || x.consultor_nome || "-"}</td>}<td>{x.origem === "cliente" ? "Cliente" : "Conectas"}</td><td>{Number(x.nota).toLocaleString("pt-BR")} de {Number(x.escala_max).toLocaleString("pt-BR")}</td><td>{x.respostas ?? "-"}</td>
+          {[...rv].sort((a, b) => b.data.localeCompare(a.data)).map(x => <tr key={x.id}><td>{dataBR(x.data)}</td><td><Link href={`/projetos/detalhe?id=${encodeURIComponent(x.projeto_id)}`}>{proj(x.projeto_id)?.nome}</Link></td>{verCons && <td>{x.consultor?.nome || x.consultor_nome || "-"}</td>}<td>{x.origem === "cliente" ? "Cliente" : "Conectas"}</td><td>{Number(x.nota).toLocaleString("pt-BR")} de {Number(x.escala_max).toLocaleString("pt-BR")}</td><td>{x.respostas ?? "-"}</td>
             <td>{x.arquivo_path ? <button className="btn sm" onClick={async () => { const { data } = await supabase.storage.from("avaliacoes").createSignedUrl(x.arquivo_path, 120); if (data?.signedUrl) window.open(data.signedUrl, "_blank"); }}>Abrir</button> : "-"}</td></tr>)}
         </tbody></table>}</div></section>
     </>}

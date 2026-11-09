@@ -46,7 +46,7 @@ function Consultores() {
           <td><b>{l.p.nome}</b><div className="meta">{l.n} atividade{l.n === 1 ? "" : "s"}{l.sem ? ` · ${l.sem} sem horas` : ""}</div></td><td>{l.gp} / {l.lt}</td>
           <td>{l.prev.toLocaleString("pt-BR")} h<div className="meta">{l.feito.toLocaleString("pt-BR")} h concluídas</div></td><td>{l.cap.toLocaleString("pt-BR")} h</td><td>{l.livre.toLocaleString("pt-BR")} h</td>
           <td>{Math.round(l.uso)}%</td><td><span className="dot" style={{ background: c }} />{t}</td></tr>
-          {aberto === l.p.id && <tr><td colSpan={7}>{Object.entries(l.porProj).sort((a, b) => b[1].h - a[1].h).map(([id, o]) => <div key={id} className="meta"><Link href={`/projetos/${id}`}>{o.n}</Link>: {o.h.toLocaleString("pt-BR")} h</div>)}</td></tr>}</Fragment>; })}
+          {aberto === l.p.id && <tr><td colSpan={7}>{Object.entries(l.porProj).sort((a, b) => b[1].h - a[1].h).map(([id, o]) => <div key={id} className="meta"><Link href={`/projetos/detalhe?id=${encodeURIComponent(id)}`}>{o.n}</Link>: {o.h.toLocaleString("pt-BR")} h</div>)}</td></tr>}</Fragment>; })}
       </tbody></table>}</div></section>
   </>);
 }

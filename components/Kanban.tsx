@@ -51,7 +51,7 @@ export default function Kanban({ atividades, recarregar, mostrarProjeto, pessoas
           return <div key={a.id} className={"kcard" + (atrasado(a.data_prevista, a.status) ? " late" : "")} draggable onDragStart={e => e.dataTransfer.setData("text/plain", a.id)}>
             <h3>{a.nome}</h3>
             {a.entregaveis?.nome && <div className="meta">Entrega: {a.entregaveis.nome}{a.entregaveis?.macroetapas?.nome ? ` · ${a.entregaveis.macroetapas.nome}` : ""}</div>}
-            {mostrarProjeto && a.projetos?.nome && <div className="meta"><Link href={`/projetos/${a.projeto_id}`}>{a.projetos.nome}</Link>{a.projetos?.tipo_projeto ? ` · ${a.projetos.tipo_projeto}` : ""}</div>}
+            {mostrarProjeto && a.projetos?.nome && <div className="meta"><Link href={`/projetos/detalhe?id=${encodeURIComponent(a.projeto_id)}`}>{a.projetos.nome}</Link>{a.projetos?.tipo_projeto ? ` · ${a.projetos.tipo_projeto}` : ""}</div>}
             <div className="meta">{RESP[a.responsabilidade]}{a.resp?.nome ? " · " + a.resp.nome : a.contato?.nome ? " · " + a.contato.nome + " (externo)" : ""} · {dataBR(a.data_prevista)}{a.hora_prevista ? " às " + a.hora_prevista.slice(0, 5) : ""}</div>
             <div style={{ marginTop: 4 }}>{nomeTipo && <span className="tag">{nomeTipo}</span>}{t && <span className={"tag " + t.c}>{t.t}</span>}{a.logistica && <span className="tag">Logística</span>}{a.prioridade === "alta" && <span className="tag alta">Alta</span>}{mostrarValor && a.gera_receita && a.valor != null && <span className="tag">{brl(a.valor)}</span>}</div>
             {a.pendencia && <div className="meta">Pendência: {a.pendencia}</div>}

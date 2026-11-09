@@ -46,7 +46,7 @@ function Minhas() {
         {ent.filter(e => mostrar || (e.status !== "concluido" && e.status !== "cancelado")).map(e => { const t = prazoTag(e.data_prevista, e.status); return <tr key={e.id}>
           <td><b>{e.nome}</b></td>
           <td><select value={e.tipo_id || ""} onChange={ev => mudarTipoEnt(e.id, ev.target.value)}><option value="">Classificar entregável...</option>{tipos.map(tp => <option key={tp.id} value={tp.id}>{tp.nome}</option>)}</select></td>
-          <td><Link href={`/projetos/${e.projeto_id}`}>{e.projetos?.nome}</Link></td>
+          <td><Link href={`/projetos/detalhe?id=${encodeURIComponent(e.projeto_id)}`}>{e.projetos?.nome}</Link></td>
           <td>{dataBR(e.data_prevista)} {t && <span className={"tag " + t.c}>{t.t}</span>}</td>
           <td>{STATUS[e.status]}</td></tr>; })}
       </tbody></table>}</div></section>
@@ -55,7 +55,7 @@ function Minhas() {
         {vis.map(a => { const t = prazoTag(a.data_prevista, a.status); const tid = a.tipo_id || a.entregaveis?.tipo_id || ""; return <tr key={a.id}>
           <td><b>{a.nome}</b><div className="meta">{a.entregaveis?.nome}</div></td>
           <td><select value={tid} onChange={ev => mudarTipoAtiv(a, ev.target.value)}><option value="">Classificar entregável...</option>{tipos.map(tp => <option key={tp.id} value={tp.id}>{tp.nome}</option>)}</select></td>
-          <td><Link href={`/projetos/${a.projeto_id}`}>{a.projetos?.nome}</Link></td>
+          <td><Link href={`/projetos/detalhe?id=${encodeURIComponent(a.projeto_id)}`}>{a.projetos?.nome}</Link></td>
           <td>{dataBR(a.data_prevista)} {t && <span className={"tag " + t.c}>{t.t}</span>}</td>
           <td><select value={a.status} onChange={e => mudar(a, e.target.value)}>{Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></td></tr>; })}
       </tbody></table>}</div></section>

@@ -12,11 +12,61 @@ import { STATUS, STATUS_COR, SITUACAO, FASE, RESP, PRIORIDADE, LOGISTICA, UFS, b
 
 export default function ProjetoDetalheClient() { return <Shell><Detalhe /></Shell>; }
 
+function extrairIdProjeto(paramsId?: string, nextPath?: string): string {
+  if (typeof window !== "undefined") {
+    // 1. Query param ?id=... ou ?p=... ou ?codigo=... ou ?projeto=...
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const q = sp.get("id") || sp.get("p") || sp.get("codigo") || sp.get("projeto");
+      if (q && q.trim() && q.trim().toLowerCase() !== "detalhe") {
+        return decodeURIComponent(q.trim());
+      }
+    } catch {}
+
+    // 2. Segmento no pathname do navegador (/projetos/<id>)
+    try {
+      const pathSegs = (window.location.pathname || "").split("/").filter(Boolean);
+      const idx = pathSegs.indexOf("projetos");
+      if (idx >= 0 && pathSegs[idx + 1]) {
+        const seg = decodeURIComponent(pathSegs[idx + 1].trim());
+        if (seg && seg.toLowerCase() !== "detalhe" && !seg.endsWith(".html")) {
+          return seg;
+        }
+      }
+    } catch {}
+
+    // 3. Último projeto acessado salvo na sessão
+    try {
+      const ultimo = window.sessionStorage.getItem("conectas_ultimo_projeto");
+      if (ultimo && ultimo.trim().toLowerCase() !== "detalhe") {
+        return decodeURIComponent(ultimo.trim());
+      }
+    } catch {}
+  }
+
+  // 4. Fallback Next.js router
+  if (nextPath) {
+    const nextSegs = nextPath.split("/").filter(Boolean);
+    const idx = nextSegs.indexOf("projetos");
+    if (idx >= 0 && nextSegs[idx + 1]) {
+      const seg = decodeURIComponent(nextSegs[idx + 1].trim());
+      if (seg && seg.toLowerCase() !== "detalhe" && !seg.endsWith(".html")) {
+        return seg;
+      }
+    }
+  }
+
+  if (paramsId && paramsId.toLowerCase() !== "detalhe") {
+    return decodeURIComponent(paramsId.trim());
+  }
+
+  return "";
+}
+
 function Detalhe() {
   const params = useParams<{ id: string }>();
   const pathname = usePathname();
-  const seg = pathname?.split("/projetos/")[1]?.split("/")[0] || "";
-  const id = (seg && seg !== "detalhe") ? seg : (params?.id || "");
+  const [projId, setProjId] = useState<string>(() => extrairIdProjeto(params?.id, pathname));
   const { perfil } = useAuth();
   const [p, setP] = useState<any>(null); const [macros, setMacros] = useState<any[]>([]); const [ents, setEnts] = useState<any[]>([]);
   const [ativs, setAtivs] = useState<any[]>([]); const [valor, setValor] = useState<number | null>(null);
@@ -29,19 +79,20 @@ function Detalhe() {
   const [fe, setFe] = useState(""); const [fr, setFr] = useState(""); const [novoGP, setNovoGP] = useState("");
   const finVer = perfil!.fin !== "nenhum"; const finEd = perfil!.fin === "editar" || perfil!.fin === "validar";
 
-  const carregar = useCallback(async () => {
-    if (!id || id === "detalhe") return;
-    const { data: pr } = await supabase.from("projetos").select("*, clientes(nome)").eq("id", id).maybeSingle();
-    if (!pr) { setErro("Projeto não encontrado ou sem acesso."); return; }
+  const carregarComProjeto = useCallback(async (pr: any) => {
+    const canonicalId = pr.id;
     setP(pr);
+    if (typeof window !== "undefined") {
+      try { window.sessionStorage.setItem("conectas_ultimo_projeto", canonicalId); } catch {}
+    }
     const [m, e, a, f, pe, ti, pd, ct] = await Promise.all([
       supabase.from("macroetapas").select("*").eq("escopo_id", pr.escopo_vigente_id).order("ordem"),
       supabase.from("entregaveis").select("*, alocacoes_valor(valor), tipos_entregavel(nome), resp:perfis(nome)").eq("escopo_id", pr.escopo_vigente_id).order("data_prevista"),
-      supabase.from("atividades").select("*, resp:perfis(nome), contato:contatos(nome,email), entregaveis(nome)").eq("projeto_id", id).order("data_prevista"),
-      supabase.from("projeto_financeiro").select("valor_contratado,valor_liquido").eq("projeto_id", id).maybeSingle(),
+      supabase.from("atividades").select("*, resp:perfis(nome), contato:contatos(nome,email), entregaveis(nome)").eq("projeto_id", canonicalId).order("data_prevista"),
+      supabase.from("projeto_financeiro").select("valor_contratado,valor_liquido").eq("projeto_id", canonicalId).maybeSingle(),
       supabase.from("perfis").select("id,nome").eq("ativo", true).order("nome"),
       supabase.from("tipos_entregavel").select("id,nome").eq("ativo", true).order("nome"),
-      supabase.rpc("pode_editar_projeto", { p: id }),
+      supabase.rpc("pode_editar_projeto", { p: canonicalId }),
       supabase.from("contatos").select("*").eq("ativo", true).order("nome"),
     ]);
     setMacros(m.data || []); setEnts(e.data || []); setAtivs(a.data || []); setValor(f.data ? Number(f.data.valor_contratado) : null); setLiquido(f.data && f.data.valor_liquido != null ? Number(f.data.valor_liquido) : null);
@@ -50,25 +101,58 @@ function Detalhe() {
     setTiposProj(ops.filter((x: any) => x.grupo === "tipo_projeto").map((x: any) => x.nome));
     setMacrosPadrao(ops.filter((x: any) => x.grupo === "macroetapa_padrao").map((x: any) => x.nome));
     setLideresTec(ops.filter((x: any) => x.grupo === "lider_tecnico").map((x: any) => x.nome));
-    setReacao((await supabase.from("avaliacoes_reacao").select("*, consultor:perfis(nome)").eq("projeto_id", id).order("data", { ascending: false })).data || []);
-    setNpsL((await supabase.from("nps_respostas").select("*").eq("projeto_id", id).order("data", { ascending: false })).data || []);
+    setReacao((await supabase.from("avaliacoes_reacao").select("*, consultor:perfis(nome)").eq("projeto_id", canonicalId).order("data", { ascending: false })).data || []);
+    setNpsL((await supabase.from("nps_respostas").select("*").eq("projeto_id", canonicalId).order("data", { ascending: false })).data || []);
     if (pd.data === true) {
-      setHistA((await supabase.rpc("historico_alertas", { p_projeto: id })).data || []);
-      setHistE((await supabase.rpc("historico_projeto", { p_projeto: id })).data || []);
+      setHistA((await supabase.rpc("historico_alertas", { p_projeto: canonicalId })).data || []);
+      setHistE((await supabase.rpc("historico_projeto", { p_projeto: canonicalId })).data || []);
     }
-  }, [id]);
-  useEffect(() => {
-    if (typeof window !== "undefined" && (!id || id === "detalhe")) {
-      const q = new URLSearchParams(window.location.search).get("id");
-      if (q) {
-        window.location.replace(`/projetos/${encodeURIComponent(q)}`);
-      } else {
-        window.location.replace("/projetos");
+  }, []);
+
+  const carregar = useCallback(async () => {
+    const idBusca = projId || extrairIdProjeto(params?.id, pathname);
+    if (!idBusca || idBusca === "detalhe") {
+      // Se não encontrou ID na URL, verifica se existe projeto salvo ou lista de projetos
+      const { data: todos } = await supabase.from("projetos").select("*, clientes(nome)");
+      if (todos && todos.length > 0) {
+        setErro("");
+        await carregarComProjeto(todos[0]);
+        return;
       }
+      setErro("Projeto não especificado. Volte para a lista de projetos e selecione um projeto.");
       return;
     }
+
+    const { data: pr } = await supabase.from("projetos").select("*, clientes(nome)").eq("id", idBusca).maybeSingle();
+    if (!pr) {
+      const { data: todos } = await supabase.from("projetos").select("*, clientes(nome)");
+      const achado = (todos || []).find((x: any) =>
+        x.id === idBusca ||
+        x.codigo === idBusca ||
+        (x.nome && x.nome.trim().toLowerCase() === idBusca.trim().toLowerCase())
+      );
+      if (achado) {
+        setErro("");
+        await carregarComProjeto(achado);
+        return;
+      }
+      setErro("Projeto não encontrado ou sem acesso.");
+      return;
+    }
+    setErro("");
+    await carregarComProjeto(pr);
+  }, [projId, params?.id, pathname, carregarComProjeto]);
+
+  useEffect(() => {
+    const idAtual = extrairIdProjeto(params?.id, pathname);
+    if (idAtual && idAtual !== projId) {
+      setProjId(idAtual);
+    }
+  }, [params?.id, pathname, projId]);
+
+  useEffect(() => {
     carregar();
-  }, [carregar, id]);
+  }, [carregar]);
 
   const falha = (e: any) => setErro(e ? "Não foi possível salvar. Verifique sua permissão e tente de novo." : "");
   async function upd(tab: string, rid: string, campos: any) { const { data, error } = await supabase.from(tab).update(campos).eq("id", rid).select("id"); falha(error || (!data || data.length === 0 ? true : null)); carregar(); }
@@ -78,10 +162,12 @@ function Detalhe() {
     if (error) setErro("Não foi possível confirmar: " + error.message); else setErro(""); carregar();
   }
   async function salvarValorProj(v: string) {
-    const { error } = await supabase.from("projeto_financeiro").upsert({ projeto_id: id, valor_contratado: numBR(v) || 0 }); falha(error); carregar();
+    if (!p) return;
+    const { error } = await supabase.from("projeto_financeiro").upsert({ projeto_id: p.id, valor_contratado: numBR(v) || 0 }); falha(error); carregar();
   }
   async function salvarLiquido(v: string) {
-    const { error } = await supabase.from("projeto_financeiro").upsert({ projeto_id: id, valor_contratado: valor ?? 0, valor_liquido: v === "" ? null : numBR(v) || 0 }); falha(error); carregar();
+    if (!p) return;
+    const { error } = await supabase.from("projeto_financeiro").upsert({ projeto_id: p.id, valor_contratado: valor ?? 0, valor_liquido: v === "" ? null : numBR(v) || 0 }); falha(error); carregar();
   }
   // O valor do entregável é dividido entre as linhas do cronograma que ainda não foram concluídas.
   async function salvarValorEnt(e: any, v: string) {
@@ -100,13 +186,23 @@ function Detalhe() {
     await upd("entregaveis", e.id, { gera_receita: paga });
   }
   async function transferir() {
-    if (!novoGP) return;
+    if (!p || !novoGP) return;
     if (!confirm("Transferir este projeto para o novo GP? O novo GP passa a poder editá-lo.")) return;
-    const { error } = await supabase.rpc("transferir_projetos", { p_de: p.responsavel_id, p_para: novoGP, p_projeto: id });
+    const { error } = await supabase.rpc("transferir_projetos", { p_de: p.responsavel_id, p_para: novoGP, p_projeto: p.id });
     setErro(error ? "Não foi possível transferir: " + error.message : ""); setNovoGP(""); carregar();
   }
 
-  if (!p) return <p className={erro ? "erro" : "empty"}>{erro || "Carregando..."}</p>;
+  if (!p) {
+    return (
+      <div className="bx" style={{ maxWidth: 640, margin: "40px auto", textAlign: "center", padding: "32px 20px" }}>
+        <h2>{erro ? "Atenção" : "Carregando projeto..."}</h2>
+        <p className={erro ? "erro" : "meta"} style={{ margin: "16px 0 24px" }}>{erro || "Buscando dados do projeto..."}</p>
+        <Link href="/projetos" className="btn p" style={{ display: "inline-block" }}>
+          ← Voltar para todos os projetos
+        </Link>
+      </div>
+    );
+  }
   const val = (e: any) => { const a = e.alocacoes_valor; const v = Array.isArray(a) ? a[0]?.valor : a?.valor; return v == null ? null : Number(v); };
   const alocado = ents.filter(e => e.gera_receita).reduce((s, e) => s + (val(e) || 0), 0);
   const feitas = ents.filter(e => e.status === "concluido").length;
@@ -120,10 +216,10 @@ function Detalhe() {
     <Link href="/projetos" className="backbar"><span className="arr">←</span><span>Todos os projetos</span></Link>
     <header className="cx-head"><div><h1>{p.nome}</h1><div className="meta">{p.clientes?.nome} · {p.codigo} · GP: {pessoa(p.responsavel_id)}{p.lider_tecnico || p.lt?.nome || p.apoio_id ? ` · Líder técnico: ${p.lider_tecnico || p.lt?.nome || (pessoas.find(x => x.id === p.apoio_id)?.nome || p.apoio_id)}` : ""}{p.tipo_projeto ? ` · ${p.tipo_projeto}` : ""}{p.modalidade === "full_service" ? " · Full service" : ""}</div></div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <select disabled={!pode} value={p.tipo_projeto || ""} onChange={e => upd("projetos", id, { tipo_projeto: e.target.value || null })} aria-label="Classificação do projeto"><option value="">Classificação: Não definida</option>{tiposProj.map(t => <option key={t} value={t}>Classificação: {t}</option>)}</select>
-        <select disabled={!pode} value={p.fase || ""} onChange={e => upd("projetos", id, { fase: e.target.value || null })} aria-label="Fase"><option value="">Sem fase</option>{Object.entries(FASE).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
-        <select disabled={!pode} value={p.situacao} onChange={e => upd("projetos", id, { situacao: e.target.value })} aria-label="Status do projeto">{Object.entries(SITUACAO).map(([k, v]) => <option key={k} value={k}>Status: {v}</option>)}</select>
-        <select disabled={!pode} value={p.prioridade || "media"} onChange={e => upd("projetos", id, { prioridade: e.target.value })} aria-label="Prioridade">{Object.entries(PRIORIDADE).map(([k, v]) => <option key={k} value={k}>Prioridade: {v}</option>)}</select>
+        <select disabled={!pode} value={p.tipo_projeto || ""} onChange={e => upd("projetos", p.id, { tipo_projeto: e.target.value || null })} aria-label="Classificação do projeto"><option value="">Classificação: Não definida</option>{tiposProj.map(t => <option key={t} value={t}>Classificação: {t}</option>)}</select>
+        <select disabled={!pode} value={p.fase || ""} onChange={e => upd("projetos", p.id, { fase: e.target.value || null })} aria-label="Fase"><option value="">Sem fase</option>{Object.entries(FASE).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+        <select disabled={!pode} value={p.situacao} onChange={e => upd("projetos", p.id, { situacao: e.target.value })} aria-label="Status do projeto">{Object.entries(SITUACAO).map(([k, v]) => <option key={k} value={k}>Status: {v}</option>)}</select>
+        <select disabled={!pode} value={p.prioridade || "media"} onChange={e => upd("projetos", p.id, { prioridade: e.target.value })} aria-label="Prioridade">{Object.entries(PRIORIDADE).map(([k, v]) => <option key={k} value={k}>Prioridade: {v}</option>)}</select>
         {pode && <button className="btn p" onClick={() => setDlg({ t: "macro" })}>Nova macroetapa</button>}
       </div></header>
     {!pode && <p className="meta">Você pode consultar este projeto, mas não editá-lo.</p>}
@@ -181,14 +277,14 @@ function Detalhe() {
       <Kanban atividades={vis} recarregar={carregar} pessoas={pessoas} mostrarValor={finVer} onEditar={pode ? (a: any) => setDlg({ t: "ativ", a, e: ents.find(x => x.id === a.entregavel_id) }) : undefined} />
     </>)}
 
-    {aba === "fin" && <FinanceiroProjeto projetoId={id} pode={pode} perfil={perfil} />}
+    {aba === "fin" && <FinanceiroProjeto projetoId={p.id} pode={pode} perfil={perfil} />}
 
     {aba === "sobre" && <section className="bx"><h2>Sobre o projeto</h2>
       <p><b>Descrição:</b> {p.descricao || "-"}</p><p><b>Objetivo:</b> {p.objetivo || "-"}</p>
       <p><b>Período:</b> {dataBR(p.inicio_previsto)} a {dataBR(p.fim_previsto)}</p>
       <p><b>Responsabilidades da Conectas:</b> {p.resp_conectas || "-"}</p><p><b>Responsabilidades do cliente:</b> {p.resp_cliente || "-"}</p>
       <div className="fbar">
-        <label className="f">Classificação do projeto<select disabled={!pode} value={p.tipo_projeto || ""} onChange={e => upd("projetos", id, { tipo_projeto: e.target.value || null })}><option value="">Não definida</option>{tiposProj.map(t => <option key={t} value={t}>{t}</option>)}</select></label>
+        <label className="f">Classificação do projeto<select disabled={!pode} value={p.tipo_projeto || ""} onChange={e => upd("projetos", p.id, { tipo_projeto: e.target.value || null })}><option value="">Não definida</option>{tiposProj.map(t => <option key={t} value={t}>{t}</option>)}</select></label>
         <label className="f">Líder técnico
           <select disabled={!pode} value={p.lider_tecnico || (pessoas.find(x => x.id === p.apoio_id)?.nome || p.apoio_id) || ""} onChange={async e => {
             const val = e.target.value;
@@ -197,10 +293,10 @@ function Detalhe() {
               if (dig && dig.trim()) {
                 const limpo = dig.trim();
                 await supabase.from("opcoes_sistema").insert({ grupo: "lider_tecnico", nome: limpo, ativo: true });
-                await upd("projetos", id, { apoio_id: limpo, lider_tecnico: limpo });
+                await upd("projetos", p.id, { apoio_id: limpo, lider_tecnico: limpo });
               }
             } else {
-              await upd("projetos", id, { apoio_id: val || null, lider_tecnico: val || null });
+              await upd("projetos", p.id, { apoio_id: val || null, lider_tecnico: val || null });
             }
           }}>
             <option value="">Sem líder técnico</option>
@@ -210,13 +306,13 @@ function Detalhe() {
             <option value="__novo">+ Digitar novo líder técnico...</option>
           </select>
         </label>
-        <label className="f">Logística<select disabled={!pode} value={p.logistica_por || ""} onChange={e => upd("projetos", id, { logistica_por: e.target.value || null })}><option value="">Não definida</option>{Object.entries(LOGISTICA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
-        <label className="f w">Observações de logística<input disabled={!pode} key={"lo" + (p.logistica_obs || "")} defaultValue={p.logistica_obs || ""} placeholder="Quem compra passagem, hospedagem, material..." onBlur={e => { if (e.target.value !== (p.logistica_obs || "")) upd("projetos", id, { logistica_obs: e.target.value || null }); }} /></label>
+        <label className="f">Logística<select disabled={!pode} value={p.logistica_por || ""} onChange={e => upd("projetos", p.id, { logistica_por: e.target.value || null })}><option value="">Não definida</option>{Object.entries(LOGISTICA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
+        <label className="f w">Observações de logística<input disabled={!pode} key={"lo" + (p.logistica_obs || "")} defaultValue={p.logistica_obs || ""} placeholder="Quem compra passagem, hospedagem, material..." onBlur={e => { if (e.target.value !== (p.logistica_obs || "")) upd("projetos", p.id, { logistica_obs: e.target.value || null }); }} /></label>
       </div>
       {podeTransferir && <div className="fbar"><label className="f">Transferir projeto para outro GP<select value={novoGP} onChange={e => setNovoGP(e.target.value)}><option value="">Selecione</option>{pessoas.filter(x => x.id !== p.responsavel_id).map(x => <option key={x.id} value={x.id}>{x.nome}</option>)}</select></label><button className="btn" disabled={!novoGP} onClick={transferir}>Transferir</button></div>}
     </section>}
 
-    {aba === "nps" && <NpsTab id={id} l={npsL} reacao={reacao} pode={pode} pessoas={pessoas} ents={ents} recarregar={carregar} />}
+    {aba === "nps" && <NpsTab id={p.id} l={npsL} reacao={reacao} pode={pode} pessoas={pessoas} ents={ents} recarregar={carregar} />}
 
     {aba === "hist" && <>
       <section className="bx"><h2>Alertas enviados</h2><p className="meta">Quem foi avisado, quando e se o e-mail chegou a ser enviado.</p>{histA.length === 0 ? <p className="empty">Nenhum alerta ainda.</p> :
@@ -314,7 +410,11 @@ function FormAtiv({ p, macros = [], ents, tipos = [], e, a, pessoas, contatos, f
     }
     let entregavelId = s.ent;
     if (!entregavelId || entregavelId === "__auto") {
-      const macroId = s.macro || macros[0]?.id;
+      let macroId = s.macro || macros[0]?.id;
+      if (!macroId) {
+        const novaM = await supabase.from("macroetapas").insert({ escopo_id: p.escopo_vigente_id, projeto_id: p.id, nome: "Contextualização", ordem: 1 }).select("id").single();
+        if (novaM.data?.id) macroId = novaM.data.id;
+      }
       if (!macroId) return true;
       const tipoObj = tipos.find((t: any) => t.id === s.tipoEnt);
       const nomeEnt = tipoObj?.nome || s.nome;

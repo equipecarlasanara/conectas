@@ -5,11 +5,19 @@ export async function onRequest(context) {
     return context.env.ASSETS.fetch(new Request(url.toString(), context.request));
   }
 
-  // Request /projetos/detalhe (without .html) to serve static export without Cloudflare 308 redirect
+  const match = url.pathname.match(/\/projetos\/([^/?#]+)/);
+  const seg = match ? match[1] : "";
+
+  // Se for acessado /projetos/<qualquer-id>, redireciona para /projetos/detalhe?id=<qualquer-id>
+  if (seg && seg !== "detalhe" && !seg.includes(".")) {
+    const targetUrl = new URL(`/projetos/detalhe?id=${encodeURIComponent(seg)}`, url.origin);
+    return Response.redirect(targetUrl.toString(), 302);
+  }
+
+  // Serve a exportação estática de detalhe
   url.pathname = "/projetos/detalhe";
   const res = await context.env.ASSETS.fetch(new Request(url.toString(), context.request));
 
-  // If ASSETS returns any 3xx redirect, follow it internally so the browser always receives 200 OK
   if (res.status >= 300 && res.status < 400) {
     const loc = res.headers.get("Location");
     if (loc) {
