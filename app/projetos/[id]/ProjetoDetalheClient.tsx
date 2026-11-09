@@ -238,31 +238,115 @@ function Detalhe() {
         <label className="meta">Valor líquido (após impostos)</label><input name="l" key={"l" + (liquido ?? "x")} defaultValue={liquido != null ? txtBR(liquido) : ""} placeholder="Opcional" inputMode="decimal" /><button className="btn">Salvar líquido</button></form>
       <p className="meta">O valor contratado é mantido separado da receita prevista, reconhecida, faturada e recebida.</p></section>}
 
-    <div className="tabs"><button className={aba === "escopo" ? "on" : ""} onClick={() => setAba("escopo")}>Escopo contratado</button>
-      <button className={aba === "cronograma" ? "on" : ""} onClick={() => setAba("cronograma")}>Cronograma</button>
-      {(perfil!.papel === "admin" || perfil!.papel === "gestora" || perfil!.papel === "financeiro" || perfil!.fin !== "nenhum") && <button className={aba === "fin" ? "on" : ""} onClick={() => setAba("fin")}>Financeiro</button>}
+    <div className="tabs">
+      <button className={aba === "escopo" ? "on" : ""} onClick={() => setAba("escopo")}>
+        Escopo contratado ({ents.length})
+      </button>
+      <button className={aba === "cronograma" ? "on" : ""} onClick={() => setAba("cronograma")}>
+        Cronograma / Kanban ({ativs.length})
+      </button>
+      {(perfil!.papel === "admin" || perfil!.papel === "gestora" || perfil!.papel === "financeiro" || perfil!.fin !== "nenhum") && (
+        <button className={aba === "fin" ? "on" : ""} onClick={() => setAba("fin")}>Financeiro</button>
+      )}
       <button className={aba === "sobre" ? "on" : ""} onClick={() => setAba("sobre")}>Sobre o projeto</button>
       <button className={aba === "nps" ? "on" : ""} onClick={() => setAba("nps")}>NPS e avaliação de reação</button>
-      {pode && <button className={aba === "hist" ? "on" : ""} onClick={() => setAba("hist")}>Histórico</button>}</div>
+      {pode && <button className={aba === "hist" ? "on" : ""} onClick={() => setAba("hist")}>Histórico</button>}
+    </div>
 
     {aba === "escopo" && (<>
-      <p className="meta">Visão macro do que foi vendido. O status das macroetapas e dos entregáveis é calculado pelas atividades do Cronograma; ao informar a quantidade, o sistema cria uma linha de cronograma para cada unidade.</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+        <p className="meta" style={{ margin: 0 }}>
+          Visão completa das entregas e atividades. Clique em qualquer entrega ou atividade para abrir seus detalhes.
+        </p>
+        <div style={{ display: "flex", gap: 8 }}>
+          {pode && <button className="btn sm p" onClick={() => setDlg({ t: "ativ", e: ents[0] || null })}>+ Nova atividade geral</button>}
+          <button className="btn sm" onClick={() => setAba("cronograma")}>Abrir visão Kanban →</button>
+        </div>
+      </div>
       {macros.length === 0 ? <p className="empty">Nenhuma macroetapa ainda. {pode ? "Crie a primeira em Nova macroetapa." : ""}</p> :
       macros.map(m => { const es = ents.filter(e => e.macroetapa_id === m.id); const sm = statusAuto(es);
-        return <section className="macro" key={m.id}>
-        <div className="rowh"><h2>{m.nome} <span className="meta" style={{ fontWeight: 400 }}>{tag(sm)} · {es.filter(x => x.status === "concluido").length} de {es.length} concluídos</span></h2>{pode && <button className="btn sm" onClick={() => setDlg({ t: "ent", m })}>Novo entregável</button>}</div>
-        {es.length === 0 && <p className="meta">Nenhum entregável nesta macroetapa.</p>}
+        return <section className="macro" key={m.id} style={{ marginBottom: 20 }}>
+        <div className="rowh"><h2>{m.nome} <span className="meta" style={{ fontWeight: 400 }}>{tag(sm)} · {es.filter(x => x.status === "concluido").length} de {es.length} concluídos</span></h2>{pode && <button className="btn sm" onClick={() => setDlg({ t: "ent", m })}>+ Novo entregável</button>}</div>
+        {es.length === 0 && <p className="meta">Nenhum entregável nesta macroetapa. Clique em "+ Novo entregável" para cadastrar.</p>}
         {es.map(e => { const t = prazoTag(e.data_prevista, e.status); const v = val(e); const ls = ativs.filter(a => a.entregavel_id === e.id); const lc = ls.filter(a => a.status === "concluido").length;
-          return <div key={e.id} className={"ent" + (atrasado(e.data_prevista, e.status) ? " late" : "")} style={{ ["--c" as any]: STATUS_COR[e.status] }}>
-            <div className="rowh" style={{ marginBottom: 4 }}><div><h3>{e.quantidade > 1 ? `${e.quantidade}x ` : ""}{e.nome}</h3>
-              <div className="meta">{tag(e.status)} · prazo {dataBR(e.data_prevista)}{e.hora_prevista ? " às " + e.hora_prevista.slice(0, 5) : ""} · Entregável: {pode ? <select aria-label="Classificação do entregável" style={{ padding: "2px 4px", fontSize: 13 }} value={e.tipo_id || ""} onChange={ev => upd("entregaveis", e.id, { tipo_id: ev.target.value || null })}><option value="">Definir entregável</option>{tipos.map(x => <option key={x.id} value={x.id}>{x.nome}</option>)}</select> : (e.tipos_entregavel?.nome || "não definido")}{e.uf ? ` · ${e.cidade ? e.cidade + "/" : ""}${e.uf}` : ""} · Responsável: {pode ? <select aria-label="Responsável pela entrega" style={{ padding: "2px 4px", fontSize: 13 }} value={e.responsavel_id || ""} onChange={ev => upd("entregaveis", e.id, { responsavel_id: ev.target.value || null })}><option value="">Definir</option>{pessoas.map(x => <option key={x.id} value={x.id}>{x.nome}</option>)}</select> : (e.resp?.nome || "não definido")} {t && <span className={"tag " + t.c}>{t.t}</span>} {!e.gera_receita && <span className="tag">Não paga</span>}{e.pax != null && <span className="tag">{e.pax} pessoas</span>} <span className="tag">{lc} de {ls.length} linhas no cronograma</span></div></div>
+          return <div key={e.id} className={"ent" + (atrasado(e.data_prevista, e.status) ? " late" : "")} style={{ ["--c" as any]: STATUS_COR[e.status], marginBottom: 14 }}>
+            <div className="rowh" style={{ marginBottom: 8, alignItems: "flex-start" }}>
+              <div style={{ flex: 1 }}>
+                <h3
+                  style={{ cursor: pode ? "pointer" : "default", display: "inline-flex", alignItems: "center", gap: 6 }}
+                  onClick={() => pode && setDlg({ t: "ent_edit", e })}
+                  title="Clique para editar este entregável"
+                >
+                  {e.quantidade > 1 ? `${e.quantidade}x ` : ""}{e.nome}
+                  {pode && <span style={{ fontSize: 12, color: "var(--brand)", textDecoration: "underline", fontWeight: 400 }}>✎ Editar entrega</span>}
+                </h3>
+                <div className="meta" style={{ marginTop: 4 }}>
+                  {tag(e.status)} · prazo {dataBR(e.data_prevista)}{e.hora_prevista ? " às " + e.hora_prevista.slice(0, 5) : ""} · Entregável: {pode ? <select aria-label="Classificação do entregável" style={{ padding: "2px 4px", fontSize: 13 }} value={e.tipo_id || ""} onChange={ev => upd("entregaveis", e.id, { tipo_id: ev.target.value || null })}><option value="">Definir entregável</option>{tipos.map(x => <option key={x.id} value={x.id}>{x.nome}</option>)}</select> : (e.tipos_entregavel?.nome || "não definido")}{e.uf ? ` · ${e.cidade ? e.cidade + "/" : ""}${e.uf}` : ""} · Responsável: {pode ? <select aria-label="Responsável pela entrega" style={{ padding: "2px 4px", fontSize: 13 }} value={e.responsavel_id || ""} onChange={ev => upd("entregaveis", e.id, { responsavel_id: ev.target.value || null })}><option value="">Definir</option>{pessoas.map(x => <option key={x.id} value={x.id}>{x.nome}</option>)}</select> : (e.resp?.nome || "não definido")} {t && <span className={"tag " + t.c}>{t.t}</span>} {!e.gera_receita && <span className="tag">Não paga</span>}{e.pax != null && <span className="tag">{e.pax} pessoas</span>} <span className="tag">{lc} de {ls.length} atividades</span>
+                </div>
+              </div>
               <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                {pode && <button className="btn sm p" onClick={() => setDlg({ t: "ativ", e })}>+ Nova atividade</button>}
+                {pode && <button className="btn sm" onClick={() => setDlg({ t: "ent_edit", e })}>Editar entrega</button>}
+                <button className="btn sm" onClick={() => { setFe(e.id); setAba("cronograma"); }}>Ver no Kanban</button>
                 {pode && <label className="meta" title="Entrega paga gera receita. Desmarque para entregas sem cobrança."><input type="checkbox" checked={e.gera_receita} disabled={e.status === "concluido"} onChange={ev => mudarPaga(e, ev.target.checked)} /> Paga</label>}
-                {pode && <input aria-label="Pessoas impactadas (PAX)" type="number" min={0} style={{ width: 90 }} key={"pax" + String(e.pax)} defaultValue={e.pax ?? ""} placeholder="PAX" onBlur={ev => { const n = ev.target.value === "" ? null : Number(ev.target.value); if (n !== (e.pax ?? null)) upd("entregaveis", e.id, { pax: n }); }} />}
-                {finVer && e.gera_receita && (finEd ? <input aria-label="Valor do entregável" style={{ width: 120 }} key={String(v)} defaultValue={v != null ? txtBR(v) : ""} placeholder="Valor (R$)" inputMode="decimal" onBlur={ev => { if (ev.target.value !== (v != null ? txtBR(v) : "")) salvarValorEnt(e, ev.target.value); }} /> : <b>{v != null ? brl(v) : "-"}</b>)}
-                <button className="btn sm" onClick={() => { setFe(e.id); setAba("cronograma"); }}>Ver no cronograma</button>
+                {pode && <input aria-label="Pessoas impactadas (PAX)" type="number" min={0} style={{ width: 80 }} key={"pax" + String(e.pax)} defaultValue={e.pax ?? ""} placeholder="PAX" onBlur={ev => { const n = ev.target.value === "" ? null : Number(ev.target.value); if (n !== (e.pax ?? null)) upd("entregaveis", e.id, { pax: n }); }} />}
+                {finVer && e.gera_receita && (finEd ? <input aria-label="Valor do entregável" style={{ width: 110 }} key={String(v)} defaultValue={v != null ? txtBR(v) : ""} placeholder="Valor (R$)" inputMode="decimal" onBlur={ev => { if (ev.target.value !== (v != null ? txtBR(v) : "")) salvarValorEnt(e, ev.target.value); }} /> : <b>{v != null ? brl(v) : "-"}</b>)}
                 {pode && ls.length === 0 && e.status !== "concluido" && <button className="btn sm p" onClick={() => confirmar(e.id)}>Confirmar entrega</button>}
-              </div></div>
+              </div>
+            </div>
+
+            {/* LISTA DAS ATIVIDADES DA ENTREGA NO ESCOPO */}
+            <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed var(--borda)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <b style={{ fontSize: 13, color: "var(--fg)" }}>
+                  Atividades vinculadas a esta entrega ({lc} de {ls.length} concluídas):
+                </b>
+                {pode && (
+                  <button className="btn sm" style={{ fontSize: 12, padding: "2px 8px" }} onClick={() => setDlg({ t: "ativ", e })}>
+                    + Adicionar atividade
+                  </button>
+                )}
+              </div>
+              {ls.length === 0 ? (
+                <p className="meta" style={{ fontStyle: "italic", margin: "4px 0 6px" }}>
+                  Nenhuma atividade cadastrada ainda. Clique em <b>+ Nova atividade</b> para adicionar tarefas ao cronograma desta entrega.
+                </p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {ls.map(a => (
+                    <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg)", border: "1px solid var(--borda)", padding: "8px 12px", borderRadius: 8 }}>
+                      <div
+                        style={{ display: "flex", alignItems: "center", gap: 8, cursor: pode ? "pointer" : "default", flex: 1 }}
+                        onClick={() => pode && setDlg({ t: "ativ", a, e })}
+                        title="Clique para ver ou editar detalhes desta atividade"
+                      >
+                        <span className="dot" style={{ background: STATUS_COR[a.status] }} />
+                        <b style={{ fontSize: 13, textDecoration: a.status === "concluido" ? "line-through" : "none", color: a.status === "concluido" ? "var(--fg-muted)" : "var(--fg)" }}>
+                          {a.nome}
+                        </b>
+                        <span className="meta">
+                          · {a.resp?.nome || "Sem responsável"} · Prazo: {dataBR(a.data_prevista) || "sem prazo"}{a.horas_previstas ? ` · ${a.horas_previstas}h` : ""}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <select aria-label="Status da atividade" value={a.status} onChange={async (ev) => {
+                          const st = ev.target.value;
+                          await supabase.from("atividades").update({ status: st, data_realizada: st === "concluido" ? hoje() : null }).eq("id", a.id);
+                          carregar();
+                        }} style={{ padding: "3px 6px", fontSize: 12 }}>
+                          {Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                        </select>
+                        {pode && (
+                          <button className="btn sm" onClick={() => setDlg({ t: "ativ", a, e })}>
+                            Detalhes
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>; })}
       </section>; })}</>)}
 
@@ -271,9 +355,9 @@ function Detalhe() {
         <label className="f">Entregável<select value={fe} onChange={e => setFe(e.target.value)}><option value="">Todos</option>{ents.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}</select></label>
         <label className="f">Responsável<select value={fr} onChange={e => setFr(e.target.value)}><option value="">Todos</option>{pessoas.map(x => <option key={x.id} value={x.id}>{x.nome}</option>)}</select></label>
         <button className="btn" onClick={() => { setFe(""); setFr(""); }}>Limpar filtros</button>
-        {pode && <button className="btn p" onClick={() => setDlg({ t: "ativ", e: fe ? ents.find(x => x.id === fe) : null })}>Nova atividade</button>}
+        {pode && <button className="btn p" onClick={() => setDlg({ t: "ativ", e: fe ? ents.find(x => x.id === fe) : (ents[0] || null) })}>+ Nova atividade</button>}
       </div>
-      <p className="meta">Aqui estão todos os detalhes do projeto. Crie as atividades, defina quem faz, quando e o valor de cada linha. Ao concluir uma linha com valor, ela gera receita contábil para validação.</p>
+      <p className="meta">Arraste os cartões entre as colunas para atualizar o andamento ou clique em qualquer atividade para ver e editar detalhes completos.</p>
       <Kanban atividades={vis} recarregar={carregar} pessoas={pessoas} mostrarValor={finVer} onEditar={pode ? (a: any) => setDlg({ t: "ativ", a, e: ents.find(x => x.id === a.entregavel_id) }) : undefined} />
     </>)}
 
@@ -324,6 +408,7 @@ function Detalhe() {
 
     {dlg?.t === "macro" && <FormMacro p={p} n={macros.length} tiposProj={tiposProj} macrosPadrao={macrosPadrao} onClose={() => { setDlg(null); carregar(); }} />}
     {dlg?.t === "ent" && <FormEnt p={p} m={dlg.m} tipos={tipos} pessoas={pessoas} finEd={finEd} onClose={() => { setDlg(null); carregar(); }} />}
+    {dlg?.t === "ent_edit" && <FormEntEdit p={p} e={dlg.e} macros={macros} tipos={tipos} pessoas={pessoas} onClose={() => { setDlg(null); carregar(); }} />}
     {dlg?.t === "ativ" && <FormAtiv p={p} macros={macros} ents={ents} tipos={tipos} e={dlg.e} a={dlg.a} pessoas={pessoas} contatos={contatos} finEd={finEd} onClose={() => { setDlg(null); carregar(); }} />}
   </>);
 }
@@ -373,6 +458,59 @@ function FormEnt({ p, m, tipos, pessoas, finEd, onClose }: any) {
   </Form>;
 }
 
+function FormEntEdit({ p, e, macros, tipos, pessoas, onClose }: any) {
+  const [nome, setNome] = useState(e.nome || "");
+  const [tipo, setTipo] = useState(e.tipo_id || "");
+  const [resp, setResp] = useState(e.responsavel_id || "");
+  const [data, setData] = useState(e.data_prevista || "");
+  const [hora, setHora] = useState(e.hora_prevista?.slice(0, 5) || "");
+  const [pax, setPax] = useState(e.pax_previsto != null ? String(e.pax_previsto) : e.pax != null ? String(e.pax) : "");
+  const [uf, setUf] = useState(e.uf || "");
+  const [cidade, setCidade] = useState(e.cidade || "");
+  const [receita, setReceita] = useState(!!e.gera_receita);
+  const [macroId, setMacroId] = useState(e.macroetapa_id || "");
+
+  return (
+    <Form titulo={`Editar entregável: ${e.nome}`} onClose={onClose} onSave={async () => {
+      return (await supabase.from("entregaveis").update({
+        nome,
+        tipo_id: tipo || null,
+        responsavel_id: resp || null,
+        data_prevista: data || null,
+        hora_prevista: hora || null,
+        pax_previsto: pax === "" ? null : Number(pax),
+        pax: pax === "" ? null : Number(pax),
+        uf: uf || null,
+        cidade: cidade || null,
+        gera_receita: receita,
+        macroetapa_id: macroId || e.macroetapa_id,
+      }).eq("id", e.id)).error;
+    }}>
+      <label className="f w">Nome do entregável<input required value={nome} onChange={ev => setNome(ev.target.value)} /></label>
+      <label className="f">Macroetapa<select value={macroId} onChange={ev => setMacroId(ev.target.value)}>{macros.map((m: any) => <option key={m.id} value={m.id}>{m.nome}</option>)}</select></label>
+      <label className="f">Entregável (Classificação)<select value={tipo} onChange={ev => setTipo(ev.target.value)}><option value="">Selecione</option>{tipos.map((t: any) => <option key={t.id} value={t.id}>{t.nome}</option>)}</select></label>
+      <label className="f">Consultor responsável<select value={resp} onChange={ev => setResp(ev.target.value)}><option value="">Sem responsável</option>{pessoas.map((pe: any) => <option key={pe.id} value={pe.id}>{pe.nome}</option>)}</select></label>
+      <label className="f">Data prevista<input type="date" value={data} onChange={ev => setData(ev.target.value)} /></label>
+      <label className="f">Horário<input type="time" value={hora} onChange={ev => setHora(ev.target.value)} /></label>
+      <label className="f">Pessoas previstas (PAX)<input type="number" min={0} value={pax} onChange={ev => setPax(ev.target.value)} /></label>
+      <label className="f">Estado<select value={uf} onChange={ev => setUf(ev.target.value)}><option value="">Não informado</option>{Object.keys(UFS).map(u => <option key={u} value={u}>{u}</option>)}</select></label>
+      <label className="f">Cidade<input value={cidade} onChange={ev => setCidade(ev.target.value)} /></label>
+      <label className="f w" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><input type="checkbox" checked={receita} onChange={ev => setReceita(ev.target.checked)} />Entrega paga (gera receita)</label>
+      <div className="f w" style={{ marginTop: 8 }}>
+        <button type="button" className="btn sm" style={{ color: "var(--vermelho)" }} onClick={async () => {
+          if (!confirm(`Tem certeza que deseja excluir o entregável "${e.nome}" e todas as atividades vinculadas?`)) return;
+          await supabase.from("atividades").delete().eq("entregavel_id", e.id);
+          await supabase.from("alocacoes_valor").delete().eq("entregavel_id", e.id);
+          await supabase.from("entregaveis").delete().eq("id", e.id);
+          onClose();
+        }}>
+          Excluir entregável
+        </button>
+      </div>
+    </Form>
+  );
+}
+
 // Criar ou editar uma atividade do cronograma (linha do Kanban)
 function FormAtiv({ p, macros = [], ents, tipos = [], e, a, pessoas, contatos, finEd, onClose }: any) {
   const edit = !!a;
@@ -382,6 +520,8 @@ function FormAtiv({ p, macros = [], ents, tipos = [], e, a, pessoas, contatos, f
     ent: a?.entregavel_id || e?.id || (ents.length ? "" : "__auto"),
     tipoEnt: a?.tipo_id || entInicial?.tipo_id || "",
     nome: a?.nome || "",
+    descricao: a?.descricao || "",
+    status: a?.status || "nao_iniciado",
     resp: a?.responsavel_id || "",
     contato: a?.contato_id || "",
     cn: "",
@@ -400,6 +540,12 @@ function FormAtiv({ p, macros = [], ents, tipos = [], e, a, pessoas, contatos, f
   });
   const entsDaMacro = s.macro ? ents.filter((x: any) => x.macroetapa_id === s.macro) : ents;
   const listaEnts = entsDaMacro.length > 0 ? entsDaMacro : ents;
+
+  async function excluirAtividade() {
+    if (!confirm(`Tem certeza que deseja excluir a atividade "${a.nome}"?`)) return;
+    await supabase.from("atividades").delete().eq("id", a.id);
+    onClose();
+  }
 
   return <Form titulo={edit ? `Editar atividade` : "Nova atividade"} onClose={onClose} onSave={async () => {
     let contato = s.contato;
@@ -435,9 +581,30 @@ function FormAtiv({ p, macros = [], ents, tipos = [], e, a, pessoas, contatos, f
     } else if (s.tipoEnt) {
       await supabase.from("entregaveis").update({ tipo_id: s.tipoEnt }).eq("id", entregavelId);
     }
-    const body: any = { nome: s.nome, tipo_id: s.tipoEnt || null, responsavel_id: s.resp || null, contato_id: contato || null, responsabilidade: s.tipo, data_prevista: s.data || null, hora_prevista: s.hora || null, local: s.local || null,
-      horas_previstas: s.horas === "" ? null : numBR(s.horas), participantes: s.part || null, prioridade: s.prio, logistica: s.log, pendencia: s.pend || null };
-    if (finEd) { body.valor = s.valor === "" ? null : numBR(s.valor); body.gera_receita = s.paga && (body.valor || 0) > 0; }
+    const body: any = {
+      nome: s.nome,
+      descricao: s.descricao || null,
+      tipo_id: s.tipoEnt || null,
+      responsavel_id: s.resp || null,
+      contato_id: contato || null,
+      responsabilidade: s.tipo,
+      data_prevista: s.data || null,
+      hora_prevista: s.hora || null,
+      local: s.local || null,
+      horas_previstas: s.horas === "" ? null : numBR(s.horas),
+      participantes: s.part || null,
+      prioridade: s.prio,
+      logistica: s.log,
+      pendencia: s.pend || null,
+    };
+    if (edit) {
+      body.status = s.status;
+      body.data_realizada = s.status === "concluido" ? (a.data_realizada || hoje()) : null;
+    }
+    if (finEd) {
+      body.valor = s.valor === "" ? null : numBR(s.valor);
+      body.gera_receita = s.paga && (body.valor || 0) > 0;
+    }
     if (edit) return (await supabase.from("atividades").update({ ...body, entregavel_id: entregavelId }).eq("id", a.id)).error;
     return (await supabase.from("atividades").insert({ ...body, entregavel_id: entregavelId, projeto_id: p.id })).error; }}>
     {macros.length > 0 && <label className="f">Macroetapa<select value={s.macro} onChange={x => setS({ ...s, macro: x.target.value })}><option value="">Todas</option>{macros.map((m: any) => <option key={m.id} value={m.id}>{m.nome}</option>)}</select></label>}
@@ -452,6 +619,10 @@ function FormAtiv({ p, macros = [], ents, tipos = [], e, a, pessoas, contatos, f
       setS({ ...s, ent: eid, tipoEnt: eObj?.tipo_id || s.tipoEnt, macro: eObj?.macroetapa_id || s.macro });
     }}><option value="__auto">+ Criar nova entrega no escopo automaticamente</option>{listaEnts.map((t: any) => <option key={t.id} value={t.id}>{t.nome}{t.tipos_entregavel?.nome ? ` (${t.tipos_entregavel.nome})` : ""}</option>)}</select></label>
     <label className="f w">Nome da atividade<input required value={s.nome} onChange={x => setS({ ...s, nome: x.target.value })} placeholder="Ex.: Agendar entrevistas" /></label>
+    <label className="f w">Descrição detalhada / orientações<textarea rows={2} value={s.descricao} onChange={x => setS({ ...s, descricao: x.target.value })} placeholder="Descreva os passos, instruções ou notas desta atividade..." /></label>
+    {edit && (
+      <label className="f">Status no Kanban<select value={s.status} onChange={x => setS({ ...s, status: x.target.value })}>{Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
+    )}
     <label className="f">Responsável (equipe)<select value={s.resp} onChange={x => setS({ ...s, resp: x.target.value })}><option value="">Definir depois</option>{pessoas.map((t: any) => <option key={t.id} value={t.id}>{t.nome}</option>)}</select></label>
     <label className="f">Ou contato externo (cliente, parceiro)<select value={s.contato} onChange={x => setS({ ...s, contato: x.target.value })}><option value="">Nenhum</option>{contatos.map((t: any) => <option key={t.id} value={t.id}>{t.nome}{t.email ? " · " + t.email : ""}</option>)}<option value="__novo">Cadastrar novo contato</option></select></label>
     {s.contato === "__novo" && <><label className="f">Nome do contato<input required value={s.cn} onChange={x => setS({ ...s, cn: x.target.value })} /></label><label className="f">E-mail do contato (recebe os alertas)<input type="email" value={s.ce} onChange={x => setS({ ...s, ce: x.target.value })} /></label></>}
@@ -466,6 +637,13 @@ function FormAtiv({ p, macros = [], ents, tipos = [], e, a, pessoas, contatos, f
     <label className="f w">Pendência<input value={s.pend} onChange={x => setS({ ...s, pend: x.target.value })} /></label>
     {finEd && <label className="f w" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><input type="checkbox" checked={s.paga} onChange={x => setS({ ...s, paga: x.target.checked })} />Gera receita contábil ao concluir (precisa de valor)</label>}
     <label className="f w" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><input type="checkbox" checked={s.log} onChange={x => setS({ ...s, log: x.target.checked })} />Atividade de logística</label>
+    {edit && (
+      <div className="f w" style={{ marginTop: 8 }}>
+        <button type="button" className="btn sm" style={{ color: "var(--vermelho)" }} onClick={excluirAtividade}>
+          Excluir atividade
+        </button>
+      </div>
+    )}
   </Form>;
 }
 

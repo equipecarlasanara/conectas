@@ -49,7 +49,21 @@ export default function Kanban({ atividades, recarregar, mostrarProjeto, pessoas
           const tipoAtualId = a.tipo_id || a.entregaveis?.tipo_id || "";
           const nomeTipo = a.tipos_entregavel?.nome || a.entregaveis?.tipos_entregavel?.nome || listaTipos.find((x: any) => x.id === tipoAtualId)?.nome || "";
           return <div key={a.id} className={"kcard" + (atrasado(a.data_prevista, a.status) ? " late" : "")} draggable onDragStart={e => e.dataTransfer.setData("text/plain", a.id)}>
-            <h3>{a.nome}</h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 6, marginBottom: 4 }}>
+              <h3
+                style={{ cursor: onEditar ? "pointer" : "default", margin: 0, flex: 1, textDecoration: a.status === "concluido" ? "line-through" : "none" }}
+                onClick={() => onEditar && onEditar(a)}
+                title="Clique para ver ou editar detalhes desta atividade"
+              >
+                {a.nome}
+              </h3>
+              {onEditar && (
+                <button type="button" className="btn sm" style={{ padding: "2px 6px", fontSize: 11, whiteSpace: "nowrap" }} onClick={() => onEditar(a)}>
+                  Detalhes
+                </button>
+              )}
+            </div>
+            {a.descricao && <p className="meta" style={{ margin: "2px 0 6px", fontSize: 12, color: "var(--fg)", background: "var(--soft)", padding: "4px 8px", borderRadius: 4 }}>{a.descricao}</p>}
             {a.entregaveis?.nome && <div className="meta">Entrega: {a.entregaveis.nome}{a.entregaveis?.macroetapas?.nome ? ` · ${a.entregaveis.macroetapas.nome}` : ""}</div>}
             {mostrarProjeto && a.projetos?.nome && <div className="meta"><Link href={`/projetos/detalhe?id=${encodeURIComponent(a.projeto_id)}`}>{a.projetos.nome}</Link>{a.projetos?.tipo_projeto ? ` · ${a.projetos.tipo_projeto}` : ""}</div>}
             <div className="meta">{RESP[a.responsabilidade]}{a.resp?.nome ? " · " + a.resp.nome : a.contato?.nome ? " · " + a.contato.nome + " (externo)" : ""} · {dataBR(a.data_prevista)}{a.hora_prevista ? " às " + a.hora_prevista.slice(0, 5) : ""}</div>
@@ -57,7 +71,6 @@ export default function Kanban({ atividades, recarregar, mostrarProjeto, pessoas
             {a.pendencia && <div className="meta">Pendência: {a.pendencia}</div>}
             <label className="meta" style={{ display: "block", marginTop: 6 }}>Entregável<select aria-label="Classificação do entregável" value={tipoAtualId} onChange={e => classificarEntregavel(a, e.target.value)} style={{ padding: "3px 6px", fontSize: 13, width: "100%" }}><option value="">Classificar entregável...</option>{listaTipos.map((tp: any) => <option key={tp.id} value={tp.id}>{tp.nome}</option>)}</select></label>
             <label className="meta" style={{ display: "block", marginTop: 6 }}>Responsável<select aria-label="Responsável" value={a.responsavel_id || ""} onChange={e => atribuir(a, e.target.value)} style={{ padding: "3px 6px", fontSize: 13, width: "100%" }}><option value="">Definir</option>{pessoas.map((p: any) => <option key={p.id} value={p.id}>{p.nome}</option>)}</select></label>
-            {onEditar && <button className="btn sm" style={{ marginTop: 6 }} onClick={() => onEditar(a)}>Editar atividade</button>}
             <select aria-label="Mover para" value={a.status} onChange={e => mover(a, e.target.value)} style={{ marginTop: 6, padding: "3px 6px", fontSize: 13, width: "100%" }}>{colunas.map(k => <option key={k} value={k}>{STATUS[k]}</option>)}</select>
           </div>; })}
       </div>; })}</div>
