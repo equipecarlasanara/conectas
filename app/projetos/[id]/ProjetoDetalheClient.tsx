@@ -22,6 +22,7 @@ function Detalhe() {
   const [ativs, setAtivs] = useState<any[]>([]); const [valor, setValor] = useState<number | null>(null);
   const [pessoas, setPessoas] = useState<any[]>([]); const [tipos, setTipos] = useState<any[]>([]); const [contatos, setContatos] = useState<any[]>([]);
   const [tiposProj, setTiposProj] = useState<string[]>([]); const [macrosPadrao, setMacrosPadrao] = useState<string[]>([]);
+  const [lideresTec, setLideresTec] = useState<string[]>([]);
   const [pode, setPode] = useState(false); const [erro, setErro] = useState(""); const [dlg, setDlg] = useState<any>(null);
   const [histA, setHistA] = useState<any[]>([]); const [histE, setHistE] = useState<any[]>([]);
   const [aba, setAba] = useState("escopo"); const [npsL, setNpsL] = useState<any[]>([]); const [reacao, setReacao] = useState<any[]>([]); const [liquido, setLiquido] = useState<number | null>(null);
@@ -48,6 +49,7 @@ function Detalhe() {
     const ops = (await supabase.from("opcoes_sistema").select("grupo,nome").eq("ativo", true).order("ordem")).data || [];
     setTiposProj(ops.filter((x: any) => x.grupo === "tipo_projeto").map((x: any) => x.nome));
     setMacrosPadrao(ops.filter((x: any) => x.grupo === "macroetapa_padrao").map((x: any) => x.nome));
+    setLideresTec(ops.filter((x: any) => x.grupo === "lider_tecnico").map((x: any) => x.nome));
     setReacao((await supabase.from("avaliacoes_reacao").select("*, consultor:perfis(nome)").eq("projeto_id", id).order("data", { ascending: false })).data || []);
     setNpsL((await supabase.from("nps_respostas").select("*").eq("projeto_id", id).order("data", { ascending: false })).data || []);
     if (pd.data === true) {
@@ -105,7 +107,7 @@ function Detalhe() {
 
   return (<>
     <Link href="/projetos" className="backbar"><span className="arr">←</span><span>Todos os projetos</span></Link>
-    <header className="cx-head"><div><h1>{p.nome}</h1><div className="meta">{p.clientes?.nome} · {p.codigo} · GP: {pessoa(p.responsavel_id)}{p.apoio_id ? ` · Líder técnico: ${pessoa(p.apoio_id)}` : ""}{p.tipo_projeto ? ` · ${p.tipo_projeto}` : ""}{p.modalidade === "full_service" ? " · Full service" : ""}</div></div>
+    <header className="cx-head"><div><h1>{p.nome}</h1><div className="meta">{p.clientes?.nome} · {p.codigo} · GP: {pessoa(p.responsavel_id)}{p.lider_tecnico || p.lt?.nome || p.apoio_id ? ` · Líder técnico: ${p.lider_tecnico || p.lt?.nome || (pessoas.find(x => x.id === p.apoio_id)?.nome || p.apoio_id)}` : ""}{p.tipo_projeto ? ` · ${p.tipo_projeto}` : ""}{p.modalidade === "full_service" ? " · Full service" : ""}</div></div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <select disabled={!pode} value={p.tipo_projeto || ""} onChange={e => upd("projetos", id, { tipo_projeto: e.target.value || null })} aria-label="Classificação do projeto"><option value="">Classificação: Não definida</option>{tiposProj.map(t => <option key={t} value={t}>Classificação: {t}</option>)}</select>
         <select disabled={!pode} value={p.fase || ""} onChange={e => upd("projetos", id, { fase: e.target.value || null })} aria-label="Fase"><option value="">Sem fase</option>{Object.entries(FASE).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
@@ -176,7 +178,27 @@ function Detalhe() {
       <p><b>Responsabilidades da Conectas:</b> {p.resp_conectas || "-"}</p><p><b>Responsabilidades do cliente:</b> {p.resp_cliente || "-"}</p>
       <div className="fbar">
         <label className="f">Classificação do projeto<select disabled={!pode} value={p.tipo_projeto || ""} onChange={e => upd("projetos", id, { tipo_projeto: e.target.value || null })}><option value="">Não definida</option>{tiposProj.map(t => <option key={t} value={t}>{t}</option>)}</select></label>
-        <label className="f">Líder técnico<select disabled={!pode} value={p.apoio_id || ""} onChange={e => upd("projetos", id, { apoio_id: e.target.value || null })}><option value="">Sem líder técnico</option>{pessoas.map(x => <option key={x.id} value={x.id}>{x.nome}</option>)}</select></label>
+        <label className="f">Líder técnico
+          <select disabled={!pode} value={p.lider_tecnico || (pessoas.find(x => x.id === p.apoio_id)?.nome || p.apoio_id) || ""} onChange={async e => {
+            const val = e.target.value;
+            if (val === "__novo") {
+              const dig = prompt("Digite o nome do novo líder técnico:");
+              if (dig && dig.trim()) {
+                const limpo = dig.trim();
+                await supabase.from("opcoes_sistema").insert({ grupo: "lider_tecnico", nome: limpo, ativo: true });
+                await upd("projetos", id, { apoio_id: limpo, lider_tecnico: limpo });
+              }
+            } else {
+              await upd("projetos", id, { apoio_id: val || null, lider_tecnico: val || null });
+            }
+          }}>
+            <option value="">Sem líder técnico</option>
+            {lideresTec.map(l => <option key={l} value={l}>{l}</option>)}
+            {pessoas.filter(x => !lideresTec.includes(x.nome)).map(x => <option key={x.id} value={x.nome}>{x.nome} (usuário)</option>)}
+            {p.apoio_id && !lideresTec.includes(p.apoio_id) && !pessoas.some(x => x.id === p.apoio_id || x.nome === p.apoio_id) && <option value={p.apoio_id}>{p.apoio_id}</option>}
+            <option value="__novo">+ Digitar novo líder técnico...</option>
+          </select>
+        </label>
         <label className="f">Logística<select disabled={!pode} value={p.logistica_por || ""} onChange={e => upd("projetos", id, { logistica_por: e.target.value || null })}><option value="">Não definida</option>{Object.entries(LOGISTICA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
         <label className="f w">Observações de logística<input disabled={!pode} key={"lo" + (p.logistica_obs || "")} defaultValue={p.logistica_obs || ""} placeholder="Quem compra passagem, hospedagem, material..." onBlur={e => { if (e.target.value !== (p.logistica_obs || "")) upd("projetos", id, { logistica_obs: e.target.value || null }); }} /></label>
       </div>

@@ -19,6 +19,7 @@ const GRUPOS_OPCOES = [
   { id: "categoria_despesa", titulo: "Categorias de despesa", desc: "Categorias para lançamento de gastos e orçamento na aba Financeiro de cada projeto." },
   { id: "tipo_projeto", titulo: "Classificação do projeto", desc: "Classificação do projeto (se é Palestra, Projeto, Programa, Workshop, Consultoria)." },
   { id: "tipos_entregavel", titulo: "Entregáveis", desc: "Catálogo de entregáveis da Conectas para classificar entregas e atividades (ex.: Team Building, PDL, Coaching, Assessment, Diagnóstico...)." },
+  { id: "lider_tecnico", titulo: "Líderes técnicos", desc: "Cadastro dos líderes técnicos de projetos (não precisam ter cadastro de usuário nem senha no sistema)." },
 ];
 
 function Admin() {

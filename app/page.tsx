@@ -38,7 +38,7 @@ function Visao() {
   const maxR = Math.max(1, ...Object.values(porResp));
   const porTipo: Record<string, number> = {}; d.p.forEach((x: any) => { const k = x.tipo_projeto || "Sem tipo"; porTipo[k] = (porTipo[k] || 0) + 1; });
   const porCons: Record<string, any> = {}; d.p.forEach((x: any) => { const k = x.perfis?.nome || "Sem GP"; const o = porCons[k] = porCons[k] || { t: 0, and: 0, fin: 0 }; o.t++; if (x.situacao === "concluido" || x.situacao === "pausado" || x.situacao === "cancelado") o.fin++; else o.and++; });
-  const porLT: Record<string, any> = {}; d.p.filter((x: any) => x.apoio_id).forEach((x: any) => { const k = x.lt?.nome || "-"; const o = porLT[k] = porLT[k] || { t: 0, and: 0, fin: 0 }; o.t++; if (["concluido", "pausado", "cancelado"].includes(x.situacao)) o.fin++; else o.and++; });
+  const porLT: Record<string, any> = {}; d.p.filter((x: any) => x.apoio_id || x.lider_tecnico).forEach((x: any) => { const k = x.lt?.nome || x.lider_tecnico || x.apoio_id || "-"; const o = porLT[k] = porLT[k] || { t: 0, and: 0, fin: 0 }; o.t++; if (["concluido", "pausado", "cancelado"].includes(x.situacao)) o.fin++; else o.and++; });
   const finOk = perfil!.fin !== "nenhum";
   const prevMes: Record<string, number> = {}; ents.forEach((x: any) => { const v = x.alocacoes_valor?.valor ?? x.alocacoes_valor?.[0]?.valor; if (x.gera_receita && x.data_prevista && v) { const k = x.data_prevista.slice(0, 7); prevMes[k] = (prevMes[k] || 0) + Number(v); } });
   const recMes: Record<string, number> = {}; d.ev.filter((x: any) => x.status === "reconhecida").forEach((x: any) => { const k = (x.competencia || "").slice(0, 7); if (k) recMes[k] = (recMes[k] || 0) + Number(x.valor); });

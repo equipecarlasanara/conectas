@@ -504,7 +504,11 @@ function enrichRow(table: string, row: any, db: Record<string, any[]>) {
     copy.clientes = db.clientes.find((c) => c.id === row.cliente_id) || null;
     copy.perfis = db.perfis.find((p) => p.id === row.responsavel_id) || null;
     copy.resp = copy.perfis;
-    copy.lt = db.perfis.find((p) => p.id === row.apoio_id) || null;
+    const ltPerfil = db.perfis.find((p) => p.id === row.apoio_id);
+    const ltOpcao = (db.opcoes_sistema || []).find((o) => o.grupo === "lider_tecnico" && (o.id === row.apoio_id || o.nome === row.apoio_id));
+    const ltNome = row.lider_tecnico || ltPerfil?.nome || ltOpcao?.nome || row.apoio_id || null;
+    copy.lt = ltNome ? { nome: ltNome } : null;
+    copy.lider_tecnico = ltNome;
     copy.entregaveis = db.entregaveis.filter((e) => e.projeto_id === row.id);
     copy.projeto_financeiro = db.projeto_financeiro.filter((pf) => pf.projeto_id === row.id);
   } else if (table === "entregaveis") {
@@ -785,6 +789,7 @@ async function handleLocalRpc(fn: string, args: any = {}) {
     const pid = uuid();
     const eid = uuid();
     const codigo = args.p_codigo || `CON-2026-00${db.projetos.length + 1}`;
+    const ltVal = args.p_lider_tecnico || args.p_apoio || null;
     const novoProj = {
       id: pid,
       codigo,
@@ -793,6 +798,7 @@ async function handleLocalRpc(fn: string, args: any = {}) {
       descricao: args.p_descricao,
       responsavel_id: args.p_responsavel || uid,
       apoio_id: args.p_apoio || null,
+      lider_tecnico: ltVal,
       inicio_previsto: args.p_inicio || hojeISO(),
       fim_previsto: args.p_fim || null,
       situacao: "planejamento",
@@ -800,6 +806,20 @@ async function handleLocalRpc(fn: string, args: any = {}) {
       criado_por: uid,
       criado_em: new Date().toISOString(),
     };
+    if (ltVal) {
+      if (!db.opcoes_sistema) db.opcoes_sistema = [];
+      const jaExiste = db.opcoes_sistema.some((o: any) => o.grupo === "lider_tecnico" && (o.id === ltVal || o.nome.toLowerCase() === String(ltVal).toLowerCase()));
+      const ehPerfil = db.perfis.some((p: any) => p.id === ltVal || p.nome.toLowerCase() === String(ltVal).toLowerCase());
+      if (!jaExiste && !ehPerfil) {
+        db.opcoes_sistema.push({
+          id: `opt-lt-${uuid()}`,
+          grupo: "lider_tecnico",
+          nome: String(ltVal).trim(),
+          ordem: db.opcoes_sistema.filter((o: any) => o.grupo === "lider_tecnico").length + 1,
+          ativo: true,
+        });
+      }
+    }
     db.projetos.unshift(novoProj);
     db.escopos.push({ id: eid, projeto_id: pid, versao: 1, tipo: "contratado", motivo: "Escopo original da venda" });
     const macrosPadrao = (db.opcoes_sistema || [])

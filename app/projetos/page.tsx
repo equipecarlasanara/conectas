@@ -18,6 +18,8 @@ function Projetos() {
   const finEd = perfil!.fin === "editar" || perfil!.fin === "validar";
   const [lista, setLista] = useState<any[]>([]); const [clientes, setClientes] = useState<any[]>([]); const [pessoas, setPessoas] = useState<any[]>([]);
   const [tiposProj, setTiposProj] = useState<string[]>(TIPOS_PROJETO);
+  const [lideresTec, setLideresTec] = useState<string[]>([]);
+  const [novoLider, setNovoLider] = useState("");
   const [novo, setNovo] = useState(false); const [erro, setErro] = useState(""); const [ocupado, setOcupado] = useState(false);
   const [f, setF] = useState({ cliente: "", resp: "", sit: "", tipo: "", q: "" });
   const vazio = { codigo: "", cliente: "", nome: "", descricao: "", resp: perfil!.id, apoio: "", ini: "", fim: "", tipo: "", modalidade: "projeto", fase: "", prio: "media" };
@@ -38,10 +40,12 @@ function Projetos() {
       const d = r.data || [];
       const tps = d.filter((x: any) => x.grupo === "tipo_projeto").map((x: any) => x.nome);
       if (tps.length) setTiposProj(tps);
+      const lts = d.filter((x: any) => x.grupo === "lider_tecnico").map((x: any) => x.nome);
+      setLideresTec(lts);
     });
   }, []);
 
-  function abrirNovo() { setN(vazio); setPrev(null); setArv([]); setAbas(null); setErro(""); setErroLeitura(""); setNovoCliente(""); setNovo(true); }
+  function abrirNovo() { setN(vazio); setPrev(null); setArv([]); setAbas(null); setErro(""); setErroLeitura(""); setNovoCliente(""); setNovoLider(""); setNovo(true); }
 
   async function ler(aba?: string) {
     const arq = arqRef.current?.files?.[0]; if (!arq) { setErroLeitura("Escolha um arquivo primeiro."); return; }
@@ -93,9 +97,16 @@ function Projetos() {
         if (error || !data) { setErro("Não foi possível criar o cliente. Verifique sua permissão e tente de novo."); return; }
         clienteId = data.id;
       }
-      const { data: pid, error } = await supabase.rpc("criar_projeto", { p_codigo: n.codigo || null, p_cliente: clienteId, p_nome: n.nome, p_descricao: n.descricao || null, p_responsavel: n.resp || null, p_apoio: n.apoio || null, p_inicio: n.ini || null, p_fim: n.fim || null });
+      let apoioFinal = n.apoio;
+      if (apoioFinal === "__novo") {
+        apoioFinal = novoLider.trim();
+        if (apoioFinal && !lideresTec.includes(apoioFinal)) {
+          await supabase.from("opcoes_sistema").insert({ grupo: "lider_tecnico", nome: apoioFinal, ativo: true });
+        }
+      }
+      const { data: pid, error } = await supabase.rpc("criar_projeto", { p_codigo: n.codigo || null, p_cliente: clienteId, p_nome: n.nome, p_descricao: n.descricao || null, p_responsavel: n.resp || null, p_apoio: apoioFinal || null, p_lider_tecnico: apoioFinal || null, p_inicio: n.ini || null, p_fim: n.fim || null });
       if (error || !pid) { setErro(error?.message?.includes("duplicate") ? "Já existe um projeto com esse identificador." : "Não foi possível criar o projeto: " + (error?.message || "")); return; }
-      await supabase.from("projetos").update({ tipo_projeto: n.tipo || null, subtipo: null, modalidade: n.modalidade, fase: n.fase || null, prioridade: n.prio }).eq("id", pid);
+      await supabase.from("projetos").update({ tipo_projeto: n.tipo || null, subtipo: null, modalidade: n.modalidade, fase: n.fase || null, prioridade: n.prio, lider_tecnico: apoioFinal || null, apoio_id: apoioFinal || null }).eq("id", pid);
       if (prev) {
         const dados = { macroetapas: arv.filter(m => m.incluir).map(m => ({ nome: m.nome, entregaveis: m.entregaveis.filter((e: any) => e.incluir).map((e: any) => ({
           nome: e.nome, quantidade: e.quantidade, status: e.status, data_prevista: e.data_prevista, valor: finEd ? e.valor : null, gera_receita: e.gera_receita,
@@ -135,8 +146,8 @@ function Projetos() {
 
     {novo && <Dialog titulo="Novo projeto" onClose={() => setNovo(false)}>
       <div className="bx" style={{ background: "var(--soft)", boxShadow: "none" }}>
-        <h2>Começar por um arquivo</h2>
-        <p className="meta">Envie o arquivo recebido do comercial (PDF, DOCX ou XLSX) ou um cronograma em Excel. O sistema monta uma prévia para você conferir antes de criar. Nada é gravado até você clicar em Criar projeto.</p>
+        <h2>Começar por um arquivo (Opcional)</h2>
+        <p className="meta"><b>Não é obrigatório enviar arquivo nem usar IA</b>: você pode simplesmente preencher o formulário abaixo diretamente. Se tiver uma planilha de cronograma em Excel (.xlsx, .csv), envie aqui para carregar as tarefas automaticamente sem precisar de IA.</p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <input ref={arqRef} type="file" accept=".pdf,.docx,.xlsx,.xlsm,.xls,.csv,.txt" onChange={() => { setAbas(null); setPrev(null); setErroLeitura(""); }} />
           <button type="button" className="btn" disabled={lendo} onClick={() => ler()}>{lendo ? "Lendo..." : "Ler arquivo"}</button>
@@ -157,7 +168,20 @@ function Projetos() {
           <label className="f">Fase<select value={n.fase} onChange={e => setN({ ...n, fase: e.target.value })}><option value="">Não definida</option>{Object.entries(FASE).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
           <label className="f w">Descrição e objetivo<textarea rows={2} value={n.descricao} onChange={e => setN({ ...n, descricao: e.target.value })} /></label>
           <label className="f">GP (gestor do projeto)<select value={n.resp} onChange={e => setN({ ...n, resp: e.target.value })}><option value="">Definir depois</option>{pessoas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></label>
-          <label className="f">Líder técnico<select value={n.apoio} onChange={e => setN({ ...n, apoio: e.target.value })}><option value="">Nenhum</option>{pessoas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></label>
+          <label className="f">Líder técnico
+            <select value={n.apoio} onChange={e => setN({ ...n, apoio: e.target.value })}>
+              <option value="">Nenhum</option>
+              {novoLider && <option value="__novo">Novo: {novoLider}</option>}
+              {lideresTec.map(l => <option key={l} value={l}>{l}</option>)}
+              {pessoas.filter(p => !lideresTec.includes(p.nome)).map(c => <option key={c.id} value={c.nome}>{c.nome} (usuário)</option>)}
+              <option value="__novo">+ Digitar novo líder técnico...</option>
+            </select>
+          </label>
+          {n.apoio === "__novo" && (
+            <label className="f">Nome do novo líder técnico
+              <input required value={novoLider} onChange={e => setNovoLider(e.target.value)} placeholder="Digite o nome do líder..." />
+            </label>
+          )}
           <label className="f">Prioridade<select value={n.prio} onChange={e => setN({ ...n, prio: e.target.value })}>{Object.entries(PRIORIDADE).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
           <label className="f">Início previsto<input type="date" value={n.ini} onChange={e => setN({ ...n, ini: e.target.value })} /></label>
           <label className="f">Término previsto<input type="date" value={n.fim} onChange={e => setN({ ...n, fim: e.target.value })} /></label>
